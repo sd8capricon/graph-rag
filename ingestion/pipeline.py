@@ -1,9 +1,10 @@
+import os
 from pathlib import Path
 
 from dotenv import load_dotenv
 from langchain_core.documents import Document
-from langchain_core.vectorstores import InMemoryVectorStore
 from langchain_google_genai import GoogleGenerativeAIEmbeddings
+from langchain_neo4j.vectorstores.neo4j_vector import Neo4jVector
 
 from ingestion.readers.markdown import MarkdownReader
 
@@ -17,7 +18,18 @@ class Pipeline:
     )
 
     def __init__(self, documents: list[Document], lexical_threshold: float = 0.75):
-        self.vector_store = InMemoryVectorStore(self.embedding)
+        self.vector_store = Neo4jVector(
+            self.embedding,
+            username=os.getenv("NEO4J_USER"),
+            password=os.getenv("NEO4J_PASSWORD"),
+            url=os.getenv("NEO4J_URI"),
+            text_node_property="text",
+            embedding_node_property="embedding",
+            index_name="vector_index",
+            embedding_dimension=768,
+            retrieval_query="RETURN node.text AS text, score, node {.*, text: Null, embedding:Null} as metadata",
+        )
+        self.vector_store.create_new_index()
         self.documents = documents
         self.lexical_threshold = lexical_threshold
 
@@ -26,17 +38,22 @@ class Pipeline:
         self._build_lexical_graph()
 
     def _build_vectorstore(self):
-        doc_ids = [doc.metadata["id"] for doc in self.documents]
-        self.document_ids = self.vector_store.add_documents(self.documents, doc_ids)
+        self.document_ids = self.vector_store.add_documents(self.documents)
 
     def _build_lexical_graph(self):
-        documentid_embeddings = self._get_documents_embedding(self.document_ids)
+        documentid_embeddings = self._get_documents_embedding()
         edges: list[tuple[str, str]] = self._get_lexical_edges(documentid_embeddings)
+        print(edges)
 
-    def _get_documents_embedding(self, ids: list[str]) -> dict[str, list]:
+    def _get_documents_embedding(self) -> dict[str, list]:
         embeddings_map: dict[str, list] = {}
-        for doc_id, data in self.vector_store.store.items():
-            vector = data["vector"]
+        chunks = self.vector_store.query(
+            "MATCH (c:Chunk) WHERE c.id in $ids RETURN collect(c {.id, .embedding}) as chunks",
+            params={"ids": self.document_ids},
+        )[0]["chunks"]
+        for chunk in chunks:
+            vector = chunk["embedding"]
+            doc_id = chunk["id"]
             embeddings_map[doc_id] = vector
         return embeddings_map
 
@@ -46,7 +63,9 @@ class Pipeline:
         edges: list[tuple[str, str]] = []
         for doc_id, embedding in id_embedding_map.items():
             similarity_search = (
-                self.vector_store.similarity_search_with_score_by_vector(embedding, 5)
+                self.vector_store.similarity_search_with_score_by_vector(
+                    embedding, 5, query=""
+                )
             )
             for similar_document, score in similarity_search:
                 if score > self.lexical_threshold:
