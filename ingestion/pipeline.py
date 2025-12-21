@@ -42,8 +42,8 @@ class Pipeline:
 
     def _build_lexical_graph(self):
         documentid_embeddings = self._get_documents_embedding()
-        edges: list[tuple[str, str]] = self._get_lexical_edges(documentid_embeddings)
-        print(edges)
+        edges = self._get_lexical_edges(documentid_embeddings)
+        self._connect_similar_chunks(edges)
 
     def _get_documents_embedding(self) -> dict[str, list]:
         embeddings_map: dict[str, list] = {}
@@ -59,18 +59,32 @@ class Pipeline:
 
     def _get_lexical_edges(
         self, id_embedding_map: dict[str, list]
-    ) -> list[tuple[str, str]]:
-        edges: list[tuple[str, str]] = []
+    ) -> list[tuple[str, str, float]]:
+        edges: list[tuple[str, str, float]] = []
         for doc_id, embedding in id_embedding_map.items():
             similarity_search = (
                 self.vector_store.similarity_search_with_score_by_vector(
-                    embedding, 5, query=""
+                    embedding, 3, query=""
                 )
             )
             for similar_document, score in similarity_search:
+                similar_doc_id = similar_document.metadata["id"]
+                if doc_id == similar_doc_id:
+                    continue
                 if score > self.lexical_threshold:
-                    edges.append((doc_id, similar_document.metadata["id"]))
+                    edges.append((doc_id, similar_doc_id, score))
         return edges
+
+    def _connect_similar_chunks(self, edges: list[tuple[str, str, float]]):
+        for _from, to, score in edges:
+            self.vector_store.query(
+                """
+                MATCH (from:Chunk {id: $from}), (to:Chunk {id: $to})
+                MERGE (from)-[r:SIMILAR]->(to)
+                ON CREATE SET r.score = $score
+                """,
+                params={"from": _from, "to": to, "score": score},
+            )
 
 
 if __name__ == "__main__":
