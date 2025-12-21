@@ -14,27 +14,14 @@ load_dotenv()
 
 class Pipeline:
 
-    embedding = GoogleGenerativeAIEmbeddings(
-        model="gemini-embedding-001", output_dimensionality=768
-    )
-
     def __init__(
         self,
+        vector_store: Neo4jVector,
         file_metadatas: list[FileMetadata],
         documents: list[Document],
         lexical_threshold: float = 0.75,
     ):
-        self.vector_store = Neo4jVector(
-            self.embedding,
-            username=os.getenv("NEO4J_USER"),
-            password=os.getenv("NEO4J_PASSWORD"),
-            url=os.getenv("NEO4J_URI"),
-            text_node_property="text",
-            embedding_node_property="embedding",
-            index_name="vector_index",
-            embedding_dimension=768,
-            retrieval_query="RETURN node.text AS text, score, node {.*, text: Null, embedding:Null} as metadata",
-        )
+        self.vector_store = vector_store
         self.file_metadatas = file_metadatas
         self.vector_store.create_new_index()
         self.documents = documents
@@ -121,5 +108,25 @@ if __name__ == "__main__":
     reader = MarkdownReader(path)
     file_metadata = reader.get_file_metadata()
     documents = reader.get_documents()
-    pipeline = Pipeline([file_metadata], documents)
+
+    embedding = GoogleGenerativeAIEmbeddings(
+        model="gemini-embedding-001", output_dimensionality=768
+    )
+    vector_store = Neo4jVector(
+        embedding,
+        username=os.getenv("NEO4J_USER"),
+        password=os.getenv("NEO4J_PASSWORD"),
+        url=os.getenv("NEO4J_URI"),
+        text_node_property="text",
+        embedding_node_property="embedding",
+        index_name="vector_index",
+        embedding_dimension=768,
+        retrieval_query="RETURN node.text AS text, score, node {.*, text: Null, embedding:Null} as metadata",
+    )
+
+    pipeline = Pipeline(
+        vector_store=vector_store,
+        file_metadatas=[file_metadata],
+        documents=documents,
+    )
     pipeline.run()
