@@ -20,5 +20,5 @@ class MarkdownReader(BaseReader):
             [self.file_content], [{"source": self.file_path.name}]
         )
         for document in documents:
-            document.metadata["id"] = uuid.uuid4().hex
+            document.id = uuid.uuid4().hex
         return documents
