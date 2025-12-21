@@ -6,6 +6,7 @@ from langchain_core.documents import Document
 from langchain_google_genai import GoogleGenerativeAIEmbeddings
 from langchain_neo4j.vectorstores.neo4j_vector import Neo4jVector
 
+from ingestion.models import FileMetadata
 from ingestion.readers.markdown import MarkdownReader
 
 load_dotenv()
@@ -17,7 +18,12 @@ class Pipeline:
         model="gemini-embedding-001", output_dimensionality=768
     )
 
-    def __init__(self, documents: list[Document], lexical_threshold: float = 0.75):
+    def __init__(
+        self,
+        file_metadatas: list[FileMetadata],
+        documents: list[Document],
+        lexical_threshold: float = 0.75,
+    ):
         self.vector_store = Neo4jVector(
             self.embedding,
             username=os.getenv("NEO4J_USER"),
@@ -29,16 +35,39 @@ class Pipeline:
             embedding_dimension=768,
             retrieval_query="RETURN node.text AS text, score, node {.*, text: Null, embedding:Null} as metadata",
         )
+        self.file_metadatas = file_metadatas
         self.vector_store.create_new_index()
         self.documents = documents
         self.lexical_threshold = lexical_threshold
 
     def run(self):
         self._build_vectorstore()
+        self._create_file_nodes()
         self._build_lexical_graph()
 
     def _build_vectorstore(self):
         self.document_ids = self.vector_store.add_documents(self.documents)
+
+    def _create_file_nodes(self):
+        for file_metadata in self.file_metadatas:
+            self.vector_store.query(
+                """
+                // 1. Create or Update the File node
+                MERGE (f:File {id: $id})
+                ON CREATE SET 
+                    f.name = $name,
+                    f.createdAt = timestamp()
+                ON MATCH SET 
+                    f.name = $name
+                // 2. Find all existing Chunks that belong to this file
+                WITH f
+                MATCH (c:Chunk {source_id: f.id})
+                // 3. Create the relationship
+                MERGE (c)-[:CHUNK_OF]->(f)
+                RETURN f
+                """,
+                params={"id": file_metadata["id"], "name": file_metadata["name"]},
+            )
 
     def _build_lexical_graph(self):
         documentid_embeddings = self._get_documents_embedding()
@@ -90,6 +119,7 @@ class Pipeline:
 if __name__ == "__main__":
     path = Path(__file__).resolve().parent / "data" / "alain_prost.md"
     reader = MarkdownReader(path)
+    file_metadata = reader.get_file_metadata()
     documents = reader.get_documents()
-    pipeline = Pipeline(documents)
+    pipeline = Pipeline([file_metadata], documents)
     pipeline.run()
