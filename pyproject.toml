@@ -5,9 +5,11 @@ description = "Add your description here"
 readme = "README.md"
 requires-python = ">=3.13"
 dependencies = [
+    "jinja2>=3.1.6",
     "langchain>=1.2.0",
     "langchain-google-genai>=4.1.2",
     "langchain-neo4j>=0.6.0",
+    "langchain-openai>=1.1.6",
     "langchain-text-splitters>=1.1.0",
     "numpy>=2.4.0",
     "python-dotenv>=1.2.1",
