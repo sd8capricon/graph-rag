@@ -17,28 +17,27 @@ class Pipeline:
     def __init__(
         self,
         vector_store: Neo4jVector,
-        file_metadatas: list[FileMetadata],
+        file_metadata: FileMetadata,
         documents: list[Document],
         lexical_threshold: float = 0.75,
     ):
         self.vector_store = vector_store
-        self.file_metadatas = file_metadatas
+        self.file_metadata = file_metadata
         self.vector_store.create_new_index()
         self.documents = documents
         self.lexical_threshold = lexical_threshold
 
     def run(self):
         self._build_vectorstore()
-        self._create_file_nodes()
+        self._create_file_node()
         self._build_lexical_graph()
 
     def _build_vectorstore(self):
         self.document_ids = self.vector_store.add_documents(self.documents)
 
-    def _create_file_nodes(self):
-        for file_metadata in self.file_metadatas:
-            self.vector_store.query(
-                """
+    def _create_file_node(self):
+        self.vector_store.query(
+            """
                 // 1. Create or Update the File node
                 MERGE (f:File {id: $id})
                 ON CREATE SET 
@@ -52,9 +51,9 @@ class Pipeline:
                 // 3. Create the relationship
                 MERGE (c)-[:CHUNK_OF]->(f)
                 RETURN f
-                """,
-                params={"id": file_metadata["id"], "name": file_metadata["name"]},
-            )
+            """,
+            params={"id": file_metadata["id"], "name": file_metadata["name"]},
+        )
 
     def _build_lexical_graph(self):
         documentid_embeddings = self._get_documents_embedding()
@@ -126,7 +125,7 @@ if __name__ == "__main__":
 
     pipeline = Pipeline(
         vector_store=vector_store,
-        file_metadatas=[file_metadata],
+        file_metadata=[file_metadata],
         documents=documents,
     )
     pipeline.run()
