@@ -18,12 +18,10 @@ class GraphExtractor(BaseExtractor):
     def __init__(
         self,
         description: str,
-        documents: list[Document],
         llm: BaseChatModel,
         ontology: Ontology = None,
     ):
         self.description = description
-        self.documents = documents
         self.llm = llm
         self.ontology = ontology
         self._ontology_parser = PydanticOutputParser(pydantic_object=Ontology)
@@ -39,12 +37,12 @@ class GraphExtractor(BaseExtractor):
         self.entities: list[Entity] = []
         self.triplets: list[Triplet] = []
 
-    def extract(self) -> tuple[list[Entity], list[Triplet]]:
+    def extract(self, documents: list[Document]) -> tuple[list[Entity], list[Triplet]]:
         if not self.ontology:
             self.ontology = self._extract_ontology()
 
         entity_storage: dict[str, Entity] = {}
-        for document in self.documents:
+        for document in documents:
             current_context_entities = list(entity_storage.values())
             extraction = self._apply_ontology_to_doc(document, current_context_entities)
 
