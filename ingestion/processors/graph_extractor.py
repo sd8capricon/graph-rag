@@ -23,19 +23,21 @@ class Ontology(BaseModel):
 class Entity(BaseModel):
     model_config = ConfigDict(extra="allow")
 
+    id: str = Field(..., description="Unique uuid identifier for the Entity")
     entity_label: str = Field(..., description="Label of the entity")
     properties: dict = Field(..., description="Properties belonging to the entity")
 
 
 class Triplet(BaseModel):
-    source_node: Entity = Field(
-        ..., description="Source entity of the relationship triplet"
-    )
-    relationship: str = Field(
-        ..., description="Relationship label between the entities"
-    )
-    target_node: Entity = Field(
-        ..., description="Target entity of the relationship triplet"
+    source_id: str = Field(description="Unique uuid of the source entity")
+    relationship: str = Field(description="Relationship label between the entities")
+    target_id: str = Field(description="Unique uuid of the target entity")
+
+
+class EntityRelationships(BaseModel):
+    entities: list[Entity] = Field(..., description="All identified entities")
+    triplets: list[Triplet] = Field(
+        ..., description="Tripltets of the identified entities"
     )
 
 
@@ -51,14 +53,29 @@ class GraphExtractor:
         self.documents = documents
         self.llm = llm
         self.ontology = ontology
-        self.ontology_parser = PydanticOutputParser(pydantic_object=Ontology)
-        self.triplet_parser = PydanticOutputParser(pydantic_object=Triplet)
+        self._ontology_parser = PydanticOutputParser(pydantic_object=Ontology)
+        self._triplet_parser = PydanticOutputParser(pydantic_object=EntityRelationships)
+
+        self.entities: list[Entity] = []
+        self.triplets: list[Triplet] = []
 
     def extract(self):
         if not self.ontology:
             self.ontology = self._extract_ontology()
-        triplet = self._apply_ontology_to_doc(self.documents[0])
-        print(triplet)
+
+        entity_storage: dict[str, Entity] = {}
+        for document in self.documents:
+            current_context_entities = list(entity_storage.values())
+            extraction = self._apply_ontology_to_doc(document, current_context_entities)
+
+            for ent in extraction.entities:
+                if ent.id in entity_storage:
+                    entity_storage[ent.id].properties.update(ent.properties)
+                else:
+                    entity_storage[ent.id] = ent
+            self.triplets.extend(extraction.triplets)
+
+        self.entities = list(entity_storage.values())
 
     def _extract_ontology(self) -> Ontology:
         ONTOLOGY_SYSTEM_PROMPT = f"""
@@ -67,7 +84,7 @@ class GraphExtractor:
         
         ### Objective
         Identify:
-        1. **Entity Labels**: The categories of objects. (entity_labels)
+        1. **Entity Labels**: The categories of objects. (entity_labels).
         2. **Relationship Rules**: The valid connections between Entity Labels.
 
         ### Constraints
@@ -77,15 +94,17 @@ class GraphExtractor:
         - **JSON Formatting**: Output must be a single, valid JSON object. No conversational filler.
 
         ### Strict JSON Output Format
-        {self.ontology_parser.get_format_instructions()}
+        {self._ontology_parser.get_format_instructions()}
         """
         res = self.llm.invoke(
             [SystemMessage(ONTOLOGY_SYSTEM_PROMPT), HumanMessage(self.description)]
         )
-        parsed: Ontology = self.ontology_parser.invoke(res.content)
+        parsed: Ontology = self._ontology_parser.invoke(res.content)
         return parsed
 
-    def _apply_ontology_to_doc(self, document: Document) -> Triplet:
+    def _apply_ontology_to_doc(
+        self, document: Document, existing_entities: list[Entity]
+    ) -> EntityRelationships:
         EXTRACTION_SYSTEM_PROMPT = PromptTemplate.from_template(
             """
             ### Role
@@ -96,31 +115,39 @@ class GraphExtractor:
                 - `entity_labels` : {{entity_labels}}
                 - `relationship_rules`: {{relationship_rules}}
 
+            ### Existing Entities
+            Below is a list of entities already identified in previous documents. 
+            If the current text refers to these entities (even by pronoun or partial name), 
+            REUSE their IDs instead of creating new ones.
+            {{existing_entities}}
+
             ### Extraction Rules
-            1. Strict Adherence: Extract ONLY the entity types listed in entity_labels. If an entity does not fit a label, ignore it.
+            1. Strict Adherence: Extract ONLY the entity types listed in entity_labels. If an entity does not fit a label, ignore it. Assign a unique uuid to the extracted Entities.
             2. Relationship Validation: Only extract triples (Source - Relationship -> Target) that are explicitly permitted by the relationship_rules.
             3. Property Extraction: For each entity, capture relevant attributes from the text (e.g., "age", "location", "year") and place them inside the properties dictionary. If no properties are found, return an empty dictionary {}.
-            4. Resolution: If the text refers to an entity by a pronoun (e.g., "he", "they") or a partial name, resolve it to the full entity name identified earlier in the text.
-            5. Output Format: Output must be a single, valid JSON object. No conversational filler.
+            4. Resolution: If the text refers to an entity by a pronoun (e.g., "he", "him") resolve it to an entity from the 'Existing Entities' list or a new entity you've identified in this document. If an existing entity exists then extend the properties
+            5. Triplet construction: Only make the triplets from the identified list of entities, only use the ids of entities which have already been identified.
+            6. Output Format: Output must be a single, valid JSON object. No conversational filler.
 
             ### Strict JSON Output Format
             {{output_format}}
             """,
             template_format="jinja2",
             partial_variables={
-                "output_format": self.triplet_parser.get_format_instructions()
+                "output_format": self._triplet_parser.get_format_instructions()
             },
         )
         sytem_prompt = EXTRACTION_SYSTEM_PROMPT.invoke(
             {
                 "entity_labels": self.ontology.entity_labels,
                 "relationship_rules": self.ontology.relationship_rules,
+                "existing_entities": existing_entities,
             }
         ).to_string()
         res = self.llm.invoke(
             [SystemMessage(sytem_prompt), HumanMessage(document.page_content)]
         )
-        parsed: Triplet = self.triplet_parser.invoke(res)
+        parsed: EntityRelationships = self._triplet_parser.invoke(res)
         return parsed
 
 
@@ -131,7 +158,7 @@ if __name__ == "__main__":
     llm = ChatOpenAI(
         model="openai/gpt-oss-20b",
         base_url="https://api.groq.com/openai/v1",
-        reasoning_effort="low",
+        reasoning_effort="medium",
     )
     ontology_dict = {
         "entity_labels": ["Driver", "Team", "Award", "Statistic"],
@@ -175,3 +202,5 @@ if __name__ == "__main__":
         ontology,
     )
     ex.extract()
+    print(ex.entities)
+    print(ex.triplets)
