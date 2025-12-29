@@ -3,9 +3,9 @@ from pathlib import Path
 
 from dotenv import load_dotenv
 from langchain_core.documents import Document
-from langchain_google_genai import GoogleGenerativeAIEmbeddings
 from langchain_neo4j.vectorstores.neo4j_vector import Neo4jVector
 
+from ingestion.extractors.graph_extractor import GraphExtractor
 from ingestion.models import FileMetadata
 from ingestion.readers.markdown import MarkdownReader
 
@@ -20,17 +20,22 @@ class Pipeline:
         file_metadata: FileMetadata,
         documents: list[Document],
         lexical_threshold: float = 0.75,
+        graph_extractor: GraphExtractor | None = None,
     ):
         self.vector_store = vector_store
         self.file_metadata = file_metadata
-        self.vector_store.create_new_index()
         self.documents = documents
         self.lexical_threshold = lexical_threshold
+        self.graph_extractor = graph_extractor
+
+        self.vector_store.create_new_index()
 
     def run(self):
         self._build_vectorstore()
         self._create_file_node()
         self._build_lexical_graph()
+        if self.graph_extractor:
+            entities, triplets = self.graph_extractor.extract(self.documents)
 
     def _build_vectorstore(self):
         self.document_ids = self.vector_store.add_documents(self.documents)
@@ -103,6 +108,9 @@ class Pipeline:
 
 
 if __name__ == "__main__":
+    from langchain_google_genai import GoogleGenerativeAIEmbeddings
+    from langchain_openai import ChatOpenAI
+
     path = Path(__file__).resolve().parent / "data" / "alain_prost.md"
     reader = MarkdownReader(path)
     file_metadata = reader.get_file_metadata()
@@ -111,6 +119,12 @@ if __name__ == "__main__":
     embedding = GoogleGenerativeAIEmbeddings(
         model="gemini-embedding-001", output_dimensionality=768
     )
+    llm = ChatOpenAI(
+        model="openai/gpt-oss-20b",
+        base_url="https://api.groq.com/openai/v1",
+        reasoning_effort="medium",
+    )
+
     vector_store = Neo4jVector(
         embedding,
         username=os.getenv("NEO4J_USER"),
@@ -123,9 +137,15 @@ if __name__ == "__main__":
         retrieval_query="RETURN node.text AS text, score, node {.*, text: Null, embedding:Null} as metadata",
     )
 
+    graph_exractor = GraphExtractor(
+        description="I have a set of F1 driver resumes. I need to know what information is tracked (like stats and teams), what specific details are inside those categories (like wins or years), and how the drivers, teams, and awards are linked together.",
+        llm=llm,
+    )
+
     pipeline = Pipeline(
         vector_store=vector_store,
         file_metadata=[file_metadata],
         documents=documents,
+        graph_extractor=graph_exractor,
     )
     pipeline.run()
