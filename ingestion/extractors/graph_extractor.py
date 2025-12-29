@@ -39,7 +39,7 @@ class GraphExtractor(BaseExtractor):
         self.entities: list[Entity] = []
         self.triplets: list[Triplet] = []
 
-    def extract(self):
+    def extract(self) -> tuple[list[Entity], list[Triplet]]:
         if not self.ontology:
             self.ontology = self._extract_ontology()
 
@@ -56,6 +56,8 @@ class GraphExtractor(BaseExtractor):
             self.triplets.extend(extraction.triplets)
 
         self.entities = list(entity_storage.values())
+
+        return self.entities, self.triplets
 
     def _extract_ontology(self) -> Ontology:
         # system_prompt.partial
