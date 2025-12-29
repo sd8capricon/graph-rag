@@ -36,6 +36,7 @@ class Pipeline:
         self._build_lexical_graph()
         if self.graph_extractor:
             entities, triplets = self.graph_extractor.extract(self.documents)
+            # TODO: Make entities and triplets in graph, connect the entities with their corresponding source doc using doc_ids
 
     def _build_vectorstore(self):
         self.document_ids = self.vector_store.add_documents(self.documents)

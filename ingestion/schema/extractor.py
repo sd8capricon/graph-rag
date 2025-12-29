@@ -18,6 +18,7 @@ class Entity(BaseModel):
     id: str = Field(..., description="Unique uuid identifier for the Entity")
     entity_label: str = Field(..., description="Label of the entity")
     properties: dict = Field(..., description="Properties belonging to the entity")
+    doc_ids: set[str] = Field(default_factory=set, exclude=True)
 
 
 class Triplet(BaseModel):

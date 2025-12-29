@@ -47,8 +47,12 @@ class GraphExtractor(BaseExtractor):
             extraction = self._apply_ontology_to_doc(document, current_context_entities)
 
             for ent in extraction.entities:
+                # Update doc_ids for the newly extracted entity
+                ent.doc_ids.add(document.id)
                 if ent.id in entity_storage:
                     entity_storage[ent.id].properties.update(ent.properties)
+                    # Update doc_ids on the existing record
+                    entity_storage[ent.id].doc_ids.add(document.id)
                 else:
                     entity_storage[ent.id] = ent
             self.triplets.extend(extraction.triplets)
@@ -72,11 +76,16 @@ class GraphExtractor(BaseExtractor):
         self, document: Document, existing_entities: list[Entity]
     ) -> EntityRelationships:
 
+        # Convert entities to dicts while explicitly hiding the doc_ids
+        serializable_entities = [
+            ent.model_dump(exclude={"doc_ids"}) for ent in existing_entities
+        ]
+
         sytem_prompt = self._extraction_system_prompt.invoke(
             {
                 "entity_labels": self.ontology.entity_labels,
                 "relationship_rules": self.ontology.relationship_rules,
-                "existing_entities": existing_entities,
+                "existing_entities": serializable_entities,
             }
         ).to_string()
         res = self.llm.invoke(
