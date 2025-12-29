@@ -4,6 +4,7 @@ from langchain_core.documents import Document
 from langchain_core.language_models.chat_models import BaseChatModel
 from langchain_core.output_parsers import PydanticOutputParser
 
+from ingestion.extractors.base import BaseExtractor
 from ingestion.prompts.graph_extractor import (
     EXTRACTION_SYSTEM_PROMPT,
     ONTOLOGY_SYSTEM_PROMPT,
@@ -13,7 +14,7 @@ from ingestion.schema.extractor import Entity, EntityRelationships, Ontology, Tr
 load_dotenv()
 
 
-class GraphExtractor:
+class GraphExtractor(BaseExtractor):
     def __init__(
         self,
         description: str,
