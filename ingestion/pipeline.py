@@ -8,6 +8,7 @@ from langchain_neo4j.vectorstores.neo4j_vector import Neo4jVector
 from ingestion.extractors.graph_extractor import GraphExtractor
 from ingestion.models import FileMetadata
 from ingestion.readers.markdown import MarkdownReader
+from ingestion.schema.extractor import Entity, Triplet
 
 load_dotenv()
 
@@ -36,7 +37,10 @@ class Pipeline:
         self._build_lexical_graph()
         if self.graph_extractor:
             entities, triplets = self.graph_extractor.extract(self.documents)
-            # TODO: Make entities and triplets in graph, connect the entities with their corresponding source doc using doc_ids
+            for entity in entities:
+                self._create_entity_and_links(entity)
+            for triplet in triplets:
+                self._create_triplet_relationship(triplet)
 
     def _build_vectorstore(self):
         self.document_ids = self.vector_store.add_documents(self.documents)
@@ -106,6 +110,41 @@ class Pipeline:
                 """,
                 params={"from": _from, "to": to, "score": score},
             )
+
+    def _create_entity_and_links(self, entity: Entity):
+        create_entity_query = f"""
+        MERGE (e:{entity.entity_label} {{id: $entity_id}})
+        SET e += $properties
+        """
+        self.vector_store.query(
+            create_entity_query,
+            {
+                "entity_id": entity.id,
+                "properties": entity.properties or {},
+            },
+        )
+
+        create_doc_rel_query = f"""
+        MATCH (e:{entity.entity_label} {{id: $entity_id}})
+        MERGE (d:Document {{id: $doc_id}})
+        MERGE (e)-[:BELONGS_TO]->(d)
+        """
+
+        for doc_id in entity.doc_ids:
+            self.vector_store.query(
+                create_doc_rel_query, {"entity_id": entity.id, "doc_id": doc_id}
+            )
+
+    def _create_triplet_relationship(self, triplet: Triplet):
+        query = f"""
+        MATCH (s {{id: $source_id}})
+        MATCH (t {{id: $target_id}})
+        MERGE (s)-[r:{triplet.relationship}]->(t)
+        """
+
+        self.vector_store.query(
+            query, {"source_id": triplet.source_id, "target_id": triplet.target_id}
+        )
 
 
 if __name__ == "__main__":
