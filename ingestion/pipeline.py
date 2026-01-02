@@ -184,7 +184,7 @@ if __name__ == "__main__":
 
     pipeline = Pipeline(
         vector_store=vector_store,
-        file_metadata=[file_metadata],
+        file_metadata=file_metadata,
         documents=documents,
         graph_extractor=graph_exractor,
     )
