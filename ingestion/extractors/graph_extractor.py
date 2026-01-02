@@ -1,7 +1,6 @@
 import uuid
 from copy import deepcopy
 
-from dotenv import load_dotenv
 from langchain.messages import HumanMessage, SystemMessage
 from langchain_core.documents import Document
 from langchain_core.language_models.chat_models import BaseChatModel
@@ -13,8 +12,6 @@ from ingestion.prompts.graph_extractor import (
     ONTOLOGY_SYSTEM_PROMPT,
 )
 from ingestion.schema.extractor import Entity, EntityRelationships, Ontology, Triplet
-
-load_dotenv()
 
 
 class GraphExtractor(BaseExtractor):
