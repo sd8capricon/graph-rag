@@ -6,6 +6,7 @@ from langchain_core.documents import Document
 from langchain_neo4j.vectorstores.neo4j_vector import Neo4jVector
 
 from ingestion.extractors.graph_extractor import GraphExtractor
+from ingestion.ingestors.base import BaseIngestor
 from ingestion.readers.markdown import MarkdownReader
 from ingestion.schema.extractor import Entity, Triplet
 from ingestion.schema.file import FileMetadata
@@ -13,7 +14,7 @@ from ingestion.schema.file import FileMetadata
 load_dotenv()
 
 
-class DocumentGraphIngestor:
+class DocumentGraphIngestor(BaseIngestor):
 
     def __init__(
         self,
@@ -31,7 +32,7 @@ class DocumentGraphIngestor:
 
         self.vector_store.create_new_index()
 
-    def run(self):
+    def ingest(self):
         self._build_vectorstore()
         self._create_file_node()
         self._build_lexical_graph()
@@ -188,4 +189,4 @@ if __name__ == "__main__":
         documents=documents,
         graph_extractor=graph_exractor,
     )
-    pipeline.run()
+    pipeline.ingest()
