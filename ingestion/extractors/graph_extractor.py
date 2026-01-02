@@ -1,3 +1,6 @@
+import uuid
+from copy import deepcopy
+
 from dotenv import load_dotenv
 from langchain.messages import HumanMessage, SystemMessage
 from langchain_core.documents import Document
@@ -59,7 +62,7 @@ class GraphExtractor(BaseExtractor):
 
         self.entities = list(entity_storage.values())
 
-        return self.entities, self.triplets
+        return self._reassign_entity_ids()
 
     def _extract_ontology(self) -> Ontology:
         # system_prompt.partial
@@ -93,6 +96,39 @@ class GraphExtractor(BaseExtractor):
         )
         parsed: EntityRelationships = self._triplet_parser.invoke(res)
         return parsed
+
+    def _reassign_entity_ids(self) -> tuple[list[Entity], list[Triplet]]:
+
+        id_map: dict[str, str] = {}
+        new_entities: list[Entity] = []
+
+        for entity in self.entities:
+            new_id = str(uuid.uuid4())
+            id_map[new_id] = new_id
+
+            new_entities.append(
+                Entity(
+                    id=new_id,
+                    entity_label=entity.entity_label,
+                    properties=deepcopy(entity.properties),
+                    doc_ids=set(entity.doc_ids),
+                )
+            )
+
+        new_triplets: list[Triplet] = []
+
+        for triplet in self.triplets:
+            if triplet.source_id not in id_map or triplet.target_id not in id_map:
+                continue
+            new_triplets.append(
+                Triplet(
+                    source_id=id_map[triplet.source_id],
+                    relationship=triplet.relationship,
+                    target_id=id_map[triplet.target_id],
+                )
+            )
+
+        return new_entities, new_triplets
 
 
 if __name__ == "__main__":
