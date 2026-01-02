@@ -1,3 +1,5 @@
+import logging
+
 from langchain_core.documents import Document
 from langchain_neo4j.vectorstores.neo4j_vector import Neo4jVector
 
@@ -22,15 +24,19 @@ class DocumentGraphIngestor(BaseIngestor):
         self.vector_store.create_new_index()
 
     def ingest(self, file_metadata: FileMetadata, documents: list[Document]):
+        logging.info(f"Ingesting File {file_metadata['name']}")
         document_ids = self._build_vectorstore(documents)
         self._create_file_node(file_metadata)
         self._build_lexical_graph(document_ids)
         if self.graph_extractor:
+            logging.info(f"Performing NER for {file_metadata['name']}")
             entities, triplets = self.graph_extractor.extract(documents)
+            logging.info(f"Completed NER for {file_metadata['name']}")
             for entity in entities:
                 self._create_entity_and_links(entity)
             for triplet in triplets:
                 self._create_triplet_relationship(triplet)
+        logging.info(f"Completed Ingesting File {file_metadata['name']}")
 
     def _build_vectorstore(self, documents: list[Document]) -> list[str]:
         return self.vector_store.add_documents(documents)
@@ -94,7 +100,8 @@ class DocumentGraphIngestor(BaseIngestor):
         for _from, to, score in edges:
             self.vector_store.query(
                 """
-                MATCH (from:Chunk {id: $from}), (to:Chunk {id: $to})
+                MATCH (from:Chunk {id: $from})
+                MATCH (to:Chunk {id: $to})
                 MERGE (from)-[r:SIMILAR]->(to)
                 ON CREATE SET r.score = $score
                 """,
@@ -106,23 +113,28 @@ class DocumentGraphIngestor(BaseIngestor):
         MERGE (e:{entity.entity_label} {{id: $entity_id}})
         SET e += $properties
         """
-        self.vector_store.query(
-            create_entity_query,
-            {
-                "entity_id": entity.id,
-                "properties": entity.properties or {},
-            },
-        )
+
+        try:
+            self.vector_store.query(
+                create_entity_query,
+                params={
+                    "entity_id": entity.id,
+                    "properties": entity.properties or {},
+                },
+            )
+        except Exception as e:
+            logging.info("Entity:", entity)
+            raise e
 
         create_doc_rel_query = f"""
         MATCH (e:{entity.entity_label} {{id: $entity_id}})
-        MERGE (d:Document {{id: $doc_id}})
-        MERGE (e)-[:BELONGS_TO]->(d)
+        MERGE (c:Chunk {{id: $doc_id}})
+        MERGE (e)-[:BELONGS_TO]->(c)
         """
 
         for doc_id in entity.doc_ids:
             self.vector_store.query(
-                create_doc_rel_query, {"entity_id": entity.id, "doc_id": doc_id}
+                create_doc_rel_query, params={"entity_id": entity.id, "doc_id": doc_id}
             )
 
     def _create_triplet_relationship(self, triplet: Triplet):
@@ -133,5 +145,6 @@ class DocumentGraphIngestor(BaseIngestor):
         """
 
         self.vector_store.query(
-            query, {"source_id": triplet.source_id, "target_id": triplet.target_id}
+            query,
+            params={"source_id": triplet.source_id, "target_id": triplet.target_id},
         )

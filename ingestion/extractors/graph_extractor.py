@@ -65,7 +65,7 @@ class GraphExtractor(BaseExtractor):
         # system_prompt.partial
         res = self.llm.invoke(
             [
-                SystemMessage(self._ontology_system_prompt.invoke().to_string()),
+                SystemMessage(self._ontology_system_prompt.invoke({}).to_string()),
                 HumanMessage(self.description),
             ]
         )
