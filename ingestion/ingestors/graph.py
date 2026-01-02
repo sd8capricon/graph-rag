@@ -19,34 +19,30 @@ class DocumentGraphIngestor(BaseIngestor):
     def __init__(
         self,
         vector_store: Neo4jVector,
-        file_metadata: FileMetadata,
-        documents: list[Document],
         lexical_threshold: float = 0.75,
         graph_extractor: GraphExtractor | None = None,
     ):
         self.vector_store = vector_store
-        self.file_metadata = file_metadata
-        self.documents = documents
         self.lexical_threshold = lexical_threshold
         self.graph_extractor = graph_extractor
 
         self.vector_store.create_new_index()
 
-    def ingest(self):
-        self._build_vectorstore()
-        self._create_file_node()
-        self._build_lexical_graph()
+    def ingest(self, file_metadata: FileMetadata, documents: list[Document]):
+        document_ids = self._build_vectorstore(documents)
+        self._create_file_node(file_metadata)
+        self._build_lexical_graph(document_ids)
         if self.graph_extractor:
-            entities, triplets = self.graph_extractor.extract(self.documents)
+            entities, triplets = self.graph_extractor.extract(documents)
             for entity in entities:
                 self._create_entity_and_links(entity)
             for triplet in triplets:
                 self._create_triplet_relationship(triplet)
 
-    def _build_vectorstore(self):
-        self.document_ids = self.vector_store.add_documents(self.documents)
+    def _build_vectorstore(self, documents: list[Document]) -> list[str]:
+        return self.vector_store.add_documents(documents)
 
-    def _create_file_node(self):
+    def _create_file_node(self, file_metadata: FileMetadata):
         self.vector_store.query(
             """
                 // 1. Create or Update the File node
@@ -66,16 +62,16 @@ class DocumentGraphIngestor(BaseIngestor):
             params={"id": file_metadata["id"], "name": file_metadata["name"]},
         )
 
-    def _build_lexical_graph(self):
-        documentid_embeddings = self._get_documents_embedding()
+    def _build_lexical_graph(self, document_ids: list[str]):
+        documentid_embeddings = self._get_documents_embedding(document_ids)
         edges = self._get_lexical_edges(documentid_embeddings)
         self._connect_similar_chunks(edges)
 
-    def _get_documents_embedding(self) -> dict[str, list]:
+    def _get_documents_embedding(self, document_ids: list[str]) -> dict[str, list]:
         embeddings_map: dict[str, list] = {}
         chunks = self.vector_store.query(
             "MATCH (c:Chunk) WHERE c.id in $ids RETURN collect(c {.id, .embedding}) as chunks",
-            params={"ids": self.document_ids},
+            params={"ids": document_ids},
         )[0]["chunks"]
         for chunk in chunks:
             vector = chunk["embedding"]
@@ -88,10 +84,10 @@ class DocumentGraphIngestor(BaseIngestor):
     ) -> list[tuple[str, str, float]]:
         edges: list[tuple[str, str, float]] = []
         for doc_id, embedding in id_embedding_map.items():
-            similarity_search = (
-                self.vector_store.similarity_search_with_score_by_vector(
-                    embedding, 3, query=""
-                )
+            similarity_search = self.vector_store.similarity_search_with_score_by_vector(
+                embedding,
+                3,
+                query="",  # query is added to avoid internal error, not actually used
             )
             for similar_document, score in similarity_search:
                 similar_doc_id = similar_document.metadata["id"]
