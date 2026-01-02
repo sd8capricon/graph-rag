@@ -42,7 +42,10 @@ if __name__ == "__main__":
         embedding_dimension=768,
         retrieval_query="RETURN node.text AS text, score, node {.*, text: Null, embedding:Null} as metadata",
     )
-    graph_extractor = GraphExtractor()
+    graph_extractor = GraphExtractor(
+        description="I have a set of F1 driver resumes. I need to know what information is tracked (like stats and teams), what specific details are inside those categories (like wins or years), and how the drivers, teams, and awards are linked together.",
+        llm=llm,
+    )
 
     pipeline = Pipeline(
         ingestor=DocumentGraphIngestor(

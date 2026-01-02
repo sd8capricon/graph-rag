@@ -1,6 +1,3 @@
-import os
-from pathlib import Path
-
 from dotenv import load_dotenv
 from langchain_core.documents import Document
 from langchain_neo4j.vectorstores.neo4j_vector import Neo4jVector
@@ -145,6 +142,9 @@ class DocumentGraphIngestor(BaseIngestor):
 
 
 if __name__ == "__main__":
+    import os
+    from pathlib import Path
+
     from langchain_google_genai import GoogleGenerativeAIEmbeddings
     from langchain_openai import ChatOpenAI
 
