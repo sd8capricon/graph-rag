@@ -32,6 +32,8 @@ class DocumentGraphIngestor(BaseIngestor):
             logging.info(f"Performing NER for {file_metadata['name']}")
             entities, triplets = self.graph_extractor.extract(documents)
             logging.info(f"Completed NER for {file_metadata['name']}")
+            logging.info(f"Entites Extracted: {len(entities)}")
+            logging.info(f"Triplets Identified: {len(triplets)}")
             for entity in entities:
                 self._create_entity_and_links(entity)
             for triplet in triplets:
