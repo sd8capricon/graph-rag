@@ -3,8 +3,8 @@ from pathlib import Path
 
 from langchain_core.documents import Document
 
-from ingestion.models import FileMetadata
 from ingestion.readers.base import BaseReader
+from ingestion.schema.file import FileMetadata
 
 
 class MarkdownReader(BaseReader):

@@ -4,7 +4,7 @@ from pathlib import Path
 from langchain_core.documents import Document
 from langchain_text_splitters import RecursiveCharacterTextSplitter
 
-from ingestion.models import FileMetadata
+from ingestion.schema.file import FileMetadata
 
 
 class BaseReader(ABC):
