@@ -13,7 +13,7 @@ from ingestion.schema.extractor import Entity, Triplet
 load_dotenv()
 
 
-class Pipeline:
+class DocumentGraphIngestor:
 
     def __init__(
         self,
@@ -182,7 +182,7 @@ if __name__ == "__main__":
         llm=llm,
     )
 
-    pipeline = Pipeline(
+    pipeline = DocumentGraphIngestor(
         vector_store=vector_store,
         file_metadata=file_metadata,
         documents=documents,
