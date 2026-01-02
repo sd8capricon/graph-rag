@@ -101,7 +101,7 @@ class GraphExtractor(BaseExtractor):
 
         for entity in self.entities:
             new_id = str(uuid.uuid4())
-            id_map[new_id] = new_id
+            id_map[entity.id] = new_id
 
             new_entities.append(
                 Entity(
