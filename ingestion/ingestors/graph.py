@@ -4,7 +4,6 @@ from langchain_neo4j.vectorstores.neo4j_vector import Neo4jVector
 
 from ingestion.extractors.graph_extractor import GraphExtractor
 from ingestion.ingestors.base import BaseIngestor
-from ingestion.readers.markdown import MarkdownReader
 from ingestion.schema.extractor import Entity, Triplet
 from ingestion.schema.file import FileMetadata
 
@@ -139,48 +138,3 @@ class DocumentGraphIngestor(BaseIngestor):
         self.vector_store.query(
             query, {"source_id": triplet.source_id, "target_id": triplet.target_id}
         )
-
-
-if __name__ == "__main__":
-    import os
-    from pathlib import Path
-
-    from langchain_google_genai import GoogleGenerativeAIEmbeddings
-    from langchain_openai import ChatOpenAI
-
-    path = Path(__file__).resolve().parent / "data" / "alain_prost.md"
-    reader = MarkdownReader(path)
-    file_metadata = reader.get_file_metadata()
-    documents = reader.get_documents()
-
-    embedding = GoogleGenerativeAIEmbeddings(
-        model="gemini-embedding-001", output_dimensionality=768
-    )
-    llm = ChatOpenAI(
-        model="openai/gpt-oss-20b",
-        base_url="https://api.groq.com/openai/v1",
-        reasoning_effort="medium",
-    )
-
-    vector_store = Neo4jVector(
-        embedding,
-        username=os.getenv("NEO4J_USER"),
-        password=os.getenv("NEO4J_PASSWORD"),
-        url=os.getenv("NEO4J_URI"),
-        text_node_property="text",
-        embedding_node_property="embedding",
-        index_name="vector_index",
-        embedding_dimension=768,
-        retrieval_query="RETURN node.text AS text, score, node {.*, text: Null, embedding:Null} as metadata",
-    )
-
-    graph_exractor = GraphExtractor(
-        description="I have a set of F1 driver resumes. I need to know what information is tracked (like stats and teams), what specific details are inside those categories (like wins or years), and how the drivers, teams, and awards are linked together.",
-        llm=llm,
-    )
-
-    pipeline = DocumentGraphIngestor(
-        vector_store=vector_store,
-        graph_extractor=graph_exractor,
-    )
-    pipeline.ingest()
