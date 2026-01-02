@@ -4,7 +4,7 @@ from pathlib import Path
 from langchain_core.documents import Document
 from langchain_text_splitters import RecursiveCharacterTextSplitter
 
-from ingestion.schema.file import FileMetadata
+from ingestion.schema.file import File, FileMetadata
 
 
 class BaseReader(ABC):
@@ -28,3 +28,8 @@ class BaseReader(ABC):
     @abstractmethod
     def get_documents(self) -> list[Document]:
         pass
+
+    def load(self) -> File:
+        metadata: FileMetadata = self.get_file_metadata()
+        documents: list[Document] = self.get_documents()
+        return File(metadata=metadata, documents=documents)
