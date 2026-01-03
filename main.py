@@ -50,7 +50,7 @@ def main() -> None:
         reasoning_effort="medium",
     )
 
-    vector_store = Neo4jVector(
+    lexical_vector_store = Neo4jVector(
         embedding,
         username=os.getenv("NEO4J_USER"),
         password=os.getenv("NEO4J_PASSWORD"),
@@ -62,20 +62,32 @@ def main() -> None:
         retrieval_query="RETURN node.text AS text, score, node {.*, text: Null, embedding:Null} as metadata",
     )
 
+    property_vector_store = Neo4jVector(
+        embedding,
+        username=os.getenv("NEO4J_USER"),
+        password=os.getenv("NEO4J_PASSWORD"),
+        url=os.getenv("NEO4J_URI"),
+        node_label="Community",
+        text_node_property="summary",
+        embedding_node_property="embedding",
+        index_name="community_vector_index",
+        embedding_dimension=768,
+    )
+
     lexical_graph_ingestor = LexicalGraphIngestor(
-        vector_store=vector_store,
+        vector_store=lexical_vector_store,
     )
 
     property_graph_ingestor = PropertyGraphIngestor(
         description="I have a set of F1 driver resumes. I need to know what information is tracked (like stats and teams), what specific details are inside those categories (like wins or years), and how the drivers, teams, and awards are linked together.",
         llm=llm,
-        vector_store=vector_store,
+        vector_store=property_vector_store,
     )
 
     pipeline = Pipeline(ingestors=[lexical_graph_ingestor, property_graph_ingestor])
 
     # property_graph_ingestor._generate_community_summaries(
-    #     file_metadata={"id": "145dd7c3829544b0af71e573c0e23ff3"}
+    #     file_metadata={"id": "88d4a7e879d54a619cc00ef64f96161f"}
     # )
 
     pipeline.run(files)
