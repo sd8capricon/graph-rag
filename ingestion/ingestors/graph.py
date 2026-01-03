@@ -70,7 +70,6 @@ class DocumentGraphIngestor(BaseIngestor):
                 self._extract_community_summaries(
                     file_metadata, node_labels, relationship_labels
                 )
-                self._generate_community_summaries(file_metadata)
                 logging.info(f"Completed Community Summary Extraction")
 
         logging.info(f"Completed Ingesting File {file_metadata['name']}")
@@ -194,6 +193,7 @@ class DocumentGraphIngestor(BaseIngestor):
         relationship_labels: list[str],
     ):
         self._make_community_nodes(file_metadata, node_labels, relationship_labels)
+        self._generate_community_summaries(file_metadata)
 
     def _make_community_nodes(
         self,
