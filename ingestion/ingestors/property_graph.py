@@ -48,6 +48,8 @@ class PropertyGraphIngestor(BaseIngestor):
             COMMUNITY_SUMMARIZATION_SYSTEM_PROMPT.invoke({}).to_string()
         )
 
+        self.vector_store.create_new_index()
+
     def ingest(self, file_metadata: FileMetadata, documents: list[Document]):
         if not self.ontology:
             self.ontology = self._extract_ontology()
@@ -272,6 +274,7 @@ class PropertyGraphIngestor(BaseIngestor):
 
     def _generate_community_summaries(self, file_metadata: FileMetadata):
 
+        embedding = self.vector_store.embedding
         raw_query_result: list[dict[str, str | list[dict]]] = self.vector_store.query(
             """
             MATCH (e)-[:IN_COMMUNITY]->(c {source_id: $source_id})
@@ -285,12 +288,12 @@ class PropertyGraphIngestor(BaseIngestor):
 
             WITH c, 
                 collect({
-                    source_id: {
+                    source: {
                         labels: labels(src),
                         properties: apoc.map.clean(properties(src), ['community_id', 'source_id', 'id'], [])
                     },
                     relationship: type(r),
-                    target_id: {
+                    target: {
                         labels: labels(tgt),
                         properties: apoc.map.clean(properties(src), ['community_id', 'source_id', 'id'], [])
                     }
@@ -308,7 +311,7 @@ class PropertyGraphIngestor(BaseIngestor):
             return
 
         community_data = raw_query_result[0].get("result")
-        community_summaries: dict[str, str] = {}
+        community_summaries: dict[str, dict] = {}
 
         for mapping in community_data:
             community_id = mapping["id"]
@@ -327,21 +330,35 @@ class PropertyGraphIngestor(BaseIngestor):
                         ),
                     ]
                 )
-                community_summaries[community_id] = res.content
+                community_summaries[community_id] = {"summary": res.content}
             except Exception as e:
                 logging.error(f"Failed to summarize community {community_id}: {e}")
+
+        if not community_summaries:
+            return
+
+        # Generate vectors for community summaries (order-safe)
+        community_ids = list(community_summaries.keys())
+        summaries = [community_summaries[cid]["summary"] for cid in community_ids]
+        embeddings = embedding.embed_documents(summaries)
+        for idx, cid in enumerate(community_ids):
+            community_summaries[cid]["embedding"] = embeddings[idx]
 
         if community_summaries:
             self.vector_store.query(
                 """
                 UNWIND $data AS row
                 MATCH (c:Community {id: row.cid})
-                SET c.summary = row.summary
+                SET c.summary = row.summary, c.embedding = row.embedding
                 """,
                 params={
                     "data": [
-                        {"cid": cid, "summary": summary}
-                        for cid, summary in community_summaries.items()
+                        {
+                            "cid": cid,
+                            "summary": data["summary"],
+                            "embedding": data["embedding"],
+                        }
+                        for cid, data in community_summaries.items()
                     ]
                 },
             )
