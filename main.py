@@ -63,7 +63,6 @@ def main() -> None:
 
     lexical_graph_ingestor = LexicalGraphIngestor(
         vector_store=vector_store,
-        llm=llm,
     )
 
     property_graph_ingestor = PropertyGraphIngestor(
@@ -74,8 +73,8 @@ def main() -> None:
 
     pipeline = Pipeline(ingestors=[lexical_graph_ingestor, property_graph_ingestor])
 
-    # document_graph_ingestor._generate_community_summaries(
-    #     file_metadata={"id": "e0dc1bb5b79449ab948633b8a3a183a0"}
+    # property_graph_ingestor._generate_community_summaries(
+    #     file_metadata={"id": "145dd7c3829544b0af71e573c0e23ff3"}
     # )
 
     pipeline.run([file])

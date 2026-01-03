@@ -1,11 +1,9 @@
 import logging
 
 from langchain_core.documents import Document
-from langchain_core.language_models.chat_models import BaseChatModel
 from langchain_neo4j.vectorstores.neo4j_vector import Neo4jVector
 
 from ingestion.ingestors.base import BaseIngestor
-from ingestion.prompts.document_graph import COMMUNITY_SUMMARIZATION_SYSTEM_PROMPT
 from ingestion.schema.file import FileMetadata
 
 
@@ -18,9 +16,6 @@ class LexicalGraphIngestor(BaseIngestor):
     ):
         self.vector_store = vector_store
         self.lexical_threshold = lexical_threshold
-        self._community_summarization_sys_prompt = (
-            COMMUNITY_SUMMARIZATION_SYSTEM_PROMPT.invoke({}).to_string()
-        )
 
         self.vector_store.create_new_index()
 
@@ -31,7 +26,7 @@ class LexicalGraphIngestor(BaseIngestor):
         self._create_file_node(file_metadata)
         self._build_lexical_graph(document_ids)
 
-        logging.info(f"Completed Ingesting File {file_metadata['name']}")
+        logging.info(f"Generated Lexical Graph for File {file_metadata['name']}")
 
     def _build_vectorstore(self, documents: list[Document]) -> list[str]:
         return self.vector_store.add_documents(documents)

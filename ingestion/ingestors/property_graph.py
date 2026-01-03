@@ -10,6 +10,7 @@ from langchain_core.output_parsers import PydanticOutputParser
 from langchain_neo4j.vectorstores.neo4j_vector import Neo4jVector
 
 from ingestion.ingestors.base import BaseIngestor
+from ingestion.prompts.document_graph import COMMUNITY_SUMMARIZATION_SYSTEM_PROMPT
 from ingestion.prompts.graph_extractor import (
     EXTRACTION_SYSTEM_PROMPT,
     ONTOLOGY_SYSTEM_PROMPT,
@@ -42,6 +43,9 @@ class PropertyGraphIngestor(BaseIngestor):
         )
         self._extraction_system_prompt = EXTRACTION_SYSTEM_PROMPT.partial(
             output_format=self._triplet_parser.get_format_instructions()
+        )
+        self._community_summarization_sys_prompt = (
+            COMMUNITY_SUMMARIZATION_SYSTEM_PROMPT.invoke({}).to_string()
         )
 
     def ingest(self, file_metadata: FileMetadata, documents: list[Document]):
