@@ -34,18 +34,19 @@ def setup_logger(level=logging.INFO, fmt="%(asctime)s - %(levelname)s - %(messag
 def main() -> None:
     setup_logger()
 
-    file_path = (
-        Path(__file__).resolve().parent / "ingestion" / "data" / "alain_prost.md"
-    )
-    reader = MarkdownReader(file_path)
-    file = reader.load()
+    file_paths = [
+        Path(__file__).resolve().parent / "ingestion" / "data" / "alain_prost.md",
+        Path(__file__).resolve().parent / "ingestion" / "data" / "ayrton_senna.md",
+    ]
+
+    files = [MarkdownReader(path).load() for path in file_paths]
 
     embedding = GoogleGenerativeAIEmbeddings(
         model="gemini-embedding-001", output_dimensionality=768
     )
     llm = ChatOpenAI(
-        model="openai/gpt-oss-120b",
-        base_url="https://api.groq.com/openai/v1",
+        model="openai/gpt-oss-120b:free",
+        base_url="https://openrouter.ai/api/v1",
         reasoning_effort="medium",
     )
 
@@ -77,7 +78,7 @@ def main() -> None:
     #     file_metadata={"id": "145dd7c3829544b0af71e573c0e23ff3"}
     # )
 
-    pipeline.run([file])
+    pipeline.run(files)
 
 
 if __name__ == "__main__":
