@@ -26,6 +26,11 @@ class DocumentGraphIngestor(BaseIngestor):
     def ingest(self, file_metadata: FileMetadata, documents: list[Document]):
         logging.info(f"Ingesting File {file_metadata['name']}")
         document_ids = self._build_vectorstore(documents)
+
+        # List of all node labels and relationships
+        node_labels: list[str] = ["Chunk"]
+        relationships: list[str] = ["SIMILAR"]
+
         self._create_file_node(file_metadata)
         self._build_lexical_graph(document_ids)
         if self.graph_extractor:
@@ -36,8 +41,10 @@ class DocumentGraphIngestor(BaseIngestor):
             logging.info(f"Triplets Identified: {len(triplets)}")
             for entity in entities:
                 self._create_entity_and_links(entity, file_metadata)
+                node_labels.append(entity.entity_label)
             for triplet in triplets:
                 self._create_triplet_relationship(triplet)
+                relationships.append(triplet.relationship)
         logging.info(f"Completed Ingesting File {file_metadata['name']}")
 
     def _build_vectorstore(self, documents: list[Document]) -> list[str]:
