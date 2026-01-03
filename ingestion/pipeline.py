@@ -5,11 +5,12 @@ from ingestion.schema.file import File
 
 
 class Pipeline:
-    def __init__(self, ingestor: BaseIngestor):
-        self.ingestor = ingestor
+    def __init__(self, ingestors: list[BaseIngestor]):
+        self.ingestors = ingestors
 
     def run(self, files: list[File]):
         logging.info("Started Pipeline for Files")
         for file in files:
-            self.ingestor.ingest(file.metadata, file.documents)
+            for ingestor in self.ingestors:
+                ingestor.ingest(file.metadata, file.documents)
         logging.info("Pipeline Completed")

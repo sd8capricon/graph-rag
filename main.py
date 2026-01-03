@@ -10,6 +10,7 @@ from langchain_openai import ChatOpenAI
 
 from ingestion.extractors.graph_extractor import GraphExtractor
 from ingestion.ingestors.lexical_graph import LexicalGraphIngestor
+from ingestion.ingestors.property_graph import PropertyGraphIngestor
 from ingestion.pipeline import Pipeline
 from ingestion.readers.markdown import MarkdownReader
 
@@ -60,17 +61,19 @@ def main() -> None:
         embedding_dimension=768,
         retrieval_query="RETURN node.text AS text, score, node {.*, text: Null, embedding:Null} as metadata",
     )
-    graph_extractor = GraphExtractor(
-        description="I have a set of F1 driver resumes. I need to know what information is tracked (like stats and teams), what specific details are inside those categories (like wins or years), and how the drivers, teams, and awards are linked together.",
-        llm=llm,
-    )
-    document_graph_ingestor = LexicalGraphIngestor(
+
+    lexical_graph_ingestor = LexicalGraphIngestor(
         vector_store=vector_store,
         llm=llm,
-        graph_extractor=graph_extractor,
     )
 
-    pipeline = Pipeline(ingestor=document_graph_ingestor)
+    property_graph_ingestor = PropertyGraphIngestor(
+        description="I have a set of F1 driver resumes. I need to know what information is tracked (like stats and teams), what specific details are inside those categories (like wins or years), and how the drivers, teams, and awards are linked together.",
+        llm=llm,
+        vector_store=vector_store,
+    )
+
+    pipeline = Pipeline(ingestors=[lexical_graph_ingestor, property_graph_ingestor])
 
     # document_graph_ingestor._generate_community_summaries(
     #     file_metadata={"id": "e0dc1bb5b79449ab948633b8a3a183a0"}
