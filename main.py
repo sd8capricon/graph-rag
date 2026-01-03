@@ -44,7 +44,7 @@ def main() -> None:
         model="gemini-embedding-001", output_dimensionality=768
     )
     llm = ChatOpenAI(
-        model="openai/gpt-oss-20b",
+        model="openai/gpt-oss-120b",
         base_url="https://api.groq.com/openai/v1",
         reasoning_effort="medium",
     )
@@ -64,13 +64,17 @@ def main() -> None:
         description="I have a set of F1 driver resumes. I need to know what information is tracked (like stats and teams), what specific details are inside those categories (like wins or years), and how the drivers, teams, and awards are linked together.",
         llm=llm,
     )
-
-    pipeline = Pipeline(
-        ingestor=DocumentGraphIngestor(
-            vector_store=vector_store,
-            graph_extractor=graph_extractor,
-        )
+    document_graph_ingestor = DocumentGraphIngestor(
+        vector_store=vector_store,
+        llm=llm,
+        graph_extractor=graph_extractor,
     )
+
+    pipeline = Pipeline(ingestor=document_graph_ingestor)
+
+    # document_graph_ingestor._generate_community_summaries(
+    #     file_metadata={"id": "e0dc1bb5b79449ab948633b8a3a183a0"}
+    # )
 
     pipeline.run([file])
 
