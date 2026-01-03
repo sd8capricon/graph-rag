@@ -10,8 +10,8 @@ from langchain_core.output_parsers import PydanticOutputParser
 from langchain_neo4j.vectorstores.neo4j_vector import Neo4jVector
 
 from ingestion.ingestors.base import BaseIngestor
-from ingestion.prompts.document_graph import COMMUNITY_SUMMARIZATION_SYSTEM_PROMPT
-from ingestion.prompts.graph_extractor import (
+from ingestion.prompts.property_graph import (
+    COMMUNITY_SUMMARIZATION_SYSTEM_PROMPT,
     EXTRACTION_SYSTEM_PROMPT,
     ONTOLOGY_SYSTEM_PROMPT,
 )
