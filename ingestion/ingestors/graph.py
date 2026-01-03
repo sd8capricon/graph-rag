@@ -13,7 +13,7 @@ from ingestion.schema.extractor import Entity, Triplet
 from ingestion.schema.file import FileMetadata
 
 
-class DocumentGraphIngestor(BaseIngestor):
+class LexicalGraphIngestor(BaseIngestor):
 
     def __init__(
         self,

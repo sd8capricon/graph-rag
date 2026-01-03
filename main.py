@@ -9,7 +9,7 @@ from langchain_neo4j.vectorstores.neo4j_vector import Neo4jVector
 from langchain_openai import ChatOpenAI
 
 from ingestion.extractors.graph_extractor import GraphExtractor
-from ingestion.ingestors.graph import DocumentGraphIngestor
+from ingestion.ingestors.graph import LexicalGraphIngestor
 from ingestion.pipeline import Pipeline
 from ingestion.readers.markdown import MarkdownReader
 
@@ -64,7 +64,7 @@ def main() -> None:
         description="I have a set of F1 driver resumes. I need to know what information is tracked (like stats and teams), what specific details are inside those categories (like wins or years), and how the drivers, teams, and awards are linked together.",
         llm=llm,
     )
-    document_graph_ingestor = DocumentGraphIngestor(
+    document_graph_ingestor = LexicalGraphIngestor(
         vector_store=vector_store,
         llm=llm,
         graph_extractor=graph_extractor,
