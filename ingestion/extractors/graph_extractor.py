@@ -62,7 +62,6 @@ class GraphExtractor(BaseExtractor):
         return self._reassign_entity_ids()
 
     def _extract_ontology(self) -> Ontology:
-        # system_prompt.partial
         res = self.llm.invoke(
             [
                 SystemMessage(self._ontology_system_prompt.invoke({}).to_string()),
