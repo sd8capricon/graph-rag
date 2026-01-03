@@ -9,7 +9,6 @@ from langchain_core.language_models.chat_models import BaseChatModel
 from langchain_core.output_parsers import PydanticOutputParser
 from langchain_neo4j.vectorstores.neo4j_vector import Neo4jVector
 
-from ingestion.extractors.base import BaseExtractor
 from ingestion.ingestors.base import BaseIngestor
 from ingestion.prompts.graph_extractor import (
     EXTRACTION_SYSTEM_PROMPT,

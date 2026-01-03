@@ -8,7 +8,6 @@ from langchain_google_genai import GoogleGenerativeAIEmbeddings
 from langchain_neo4j.vectorstores.neo4j_vector import Neo4jVector
 from langchain_openai import ChatOpenAI
 
-from ingestion.extractors.graph_extractor import GraphExtractor
 from ingestion.ingestors.lexical_graph import LexicalGraphIngestor
 from ingestion.ingestors.property_graph import PropertyGraphIngestor
 from ingestion.pipeline import Pipeline
