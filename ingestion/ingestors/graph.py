@@ -251,10 +251,30 @@ class DocumentGraphIngestor(BaseIngestor):
         raw_query_result: list[dict[str, str | list[dict]]] = self.vector_store.query(
             """
             MATCH (e)-[:IN_COMMUNITY]->(c {source_id: $source_id})
-            WITH c, collect(properties(e)) AS entity_props
+            WITH c, collect(e) AS entities
+
+            MATCH (src)-[r]->(tgt)
+            WHERE src IN entities AND tgt IN entities AND type(r) <> 'IN_COMMUNITY'
+
+            WITH c, src, tgt, r
+            ORDER BY src.id, type(r), tgt.id
+
+            WITH c, 
+                collect({
+                    source_id: {
+                        labels: labels(src),
+                        properties: apoc.map.clean(properties(src), ['community_id', 'source_id', 'id'], [])
+                    },
+                    relationship: type(r),
+                    target_id: {
+                        labels: labels(tgt),
+                        properties: apoc.map.clean(properties(src), ['community_id', 'source_id', 'id'], [])
+                    }
+                }) AS triplets
+
             RETURN collect({
               id: c.id,
-              entities: [prop IN entity_props | apoc.map.clean(prop, ['community_id', 'id'], [])]
+              triplets: triplets
             }) AS result
             """,
             params={"source_id": file_metadata["id"]},
@@ -268,16 +288,16 @@ class DocumentGraphIngestor(BaseIngestor):
 
         for mapping in community_data:
             community_id = mapping["id"]
-            entities = mapping["entities"]
+            triplets = mapping["triplets"]
 
-            entities_str = json.dumps(entities, indent=2)
+            entities_str = json.dumps(triplets, indent=2)
             try:
                 res = self.llm.invoke(
                     [
                         SystemMessage(content=self._community_summarization_sys_prompt),
                         HumanMessage(
                             content=(
-                                f"DATASET: The following entities belong to a single community. "
+                                f"DATASET: The following triplets belong to a single community. "
                                 f"Analyze them and provide the summary:\n{entities_str}"
                             )
                         ),

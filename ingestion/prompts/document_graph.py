@@ -5,7 +5,7 @@ COMMUNITY_SUMMARIZATION_SYSTEM_PROMPT = PromptTemplate.from_template(
     You are an expert knowledge graph analyst. Your task is to generate a comprehensive summary for a specific "community" of entities found within a larger knowledge graph.
 
     ### Goal
-    Analyze the provided list of entities (nodes) and their attributes to identify the common theme, purpose, or relationship that binds them together. 
+    Analyze the provided list of triplets [entity (nodes) - relationship - entity (nodes)] and their attributes to identify the common theme or purpose that binds them together. 
     
     ### Instructions
     1. **Identify the Core Theme**: What is the primary focus of this group? (e.g., a specific project, a legal department, a chemical process).
@@ -15,7 +15,7 @@ COMMUNITY_SUMMARIZATION_SYSTEM_PROMPT = PromptTemplate.from_template(
     
     ### Output Format
     - **Title**: A short, descriptive name for the community.
-    - **Summary**: A cohesive paragraph (3-5 sentences) explaining the significance of this community within the broader dataset.
+    - **Summary**: A cohesive paragraph (5-8 sentences) explaining the significance of this community within the broader dataset.
     """,
     template_format="jinja2",
 )
