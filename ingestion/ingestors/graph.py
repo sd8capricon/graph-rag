@@ -58,16 +58,20 @@ class DocumentGraphIngestor(BaseIngestor):
                 self._create_triplet_relationship(triplet)
                 relationship_labels.append(triplet.relationship)
 
-        if self.extract_community_summaries:
-            if not self.llm:
-                raise ValueError(
-                    "llm must be provided when extract_community_summaries is True. "
-                    "Please provide a BaseChatModel instance during initialization."
+            if self.extract_community_summaries:
+                logging.info(
+                    f"Extracting Community Summaries for {file_metadata['name']}"
                 )
-            self._extract_community_summaries(
-                file_metadata, node_labels, relationship_labels
-            )
-            self._generate_community_summaries(file_metadata)
+                if not self.llm:
+                    raise ValueError(
+                        "llm must be provided when extract_community_summaries is True. "
+                        "Please provide a BaseChatModel instance during initialization."
+                    )
+                self._extract_community_summaries(
+                    file_metadata, node_labels, relationship_labels
+                )
+                self._generate_community_summaries(file_metadata)
+                logging.info(f"Completed Community Summary Extraction")
 
         logging.info(f"Completed Ingesting File {file_metadata['name']}")
 
