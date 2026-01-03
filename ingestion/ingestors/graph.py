@@ -220,7 +220,7 @@ class DocumentGraphIngestor(BaseIngestor):
             },
         )
 
-        self.vector_store.query("CALL gds.graph.drop('kg', false)")
+        self.vector_store.query("CALL gds.graph.drop('kg', false) YIELD graphName")
 
         self.vector_store.query(
             """
