@@ -100,7 +100,7 @@ class GraphExtractor(BaseExtractor):
         new_entities: list[Entity] = []
 
         for entity in self.entities:
-            new_id = str(uuid.uuid4())
+            new_id = str(uuid.uuid4().hex)
             id_map[entity.id] = new_id
 
             new_entities.append(
