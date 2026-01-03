@@ -92,6 +92,7 @@ class LexicalGraphIngestor(BaseIngestor):
                 """
                 MATCH (from:Chunk {id: $from})
                 MATCH (to:Chunk {id: $to})
+                WHERE from.source_id = to.source_id
                 MERGE (from)-[r:SIMILAR]->(to)
                 ON CREATE SET r.score = $score
                 """,
