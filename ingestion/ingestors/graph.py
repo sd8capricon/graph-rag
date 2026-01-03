@@ -35,7 +35,7 @@ class DocumentGraphIngestor(BaseIngestor):
             logging.info(f"Entites Extracted: {len(entities)}")
             logging.info(f"Triplets Identified: {len(triplets)}")
             for entity in entities:
-                self._create_entity_and_links(entity)
+                self._create_entity_and_links(entity, file_metadata)
             for triplet in triplets:
                 self._create_triplet_relationship(triplet)
         logging.info(f"Completed Ingesting File {file_metadata['name']}")
@@ -110,9 +110,9 @@ class DocumentGraphIngestor(BaseIngestor):
                 params={"from": _from, "to": to, "score": score},
             )
 
-    def _create_entity_and_links(self, entity: Entity):
+    def _create_entity_and_links(self, entity: Entity, file_metadata: FileMetadata):
         create_entity_query = f"""
-        MERGE (e:{entity.entity_label} {{id: $entity_id}})
+        MERGE (e:{entity.entity_label} {{id: $entity_id, source_id: $file_id}})
         SET e += $properties
         """
 
@@ -121,6 +121,7 @@ class DocumentGraphIngestor(BaseIngestor):
                 create_entity_query,
                 params={
                     "entity_id": entity.id,
+                    "file_id": file_metadata["id"],
                     "properties": entity.properties or {},
                 },
             )
