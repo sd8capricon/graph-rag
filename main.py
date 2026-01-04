@@ -12,6 +12,7 @@ from ingestion.ingestors.lexical_graph import LexicalGraphIngestor
 from ingestion.ingestors.property_graph import PropertyGraphIngestor
 from ingestion.pipeline import Pipeline
 from ingestion.readers.markdown import MarkdownReader
+from rag.retrievers import vector_search
 
 load_dotenv()
 
@@ -74,23 +75,25 @@ def main() -> None:
         embedding_dimension=768,
     )
 
-    lexical_graph_ingestor = LexicalGraphIngestor(
-        vector_store=lexical_vector_store,
-    )
+    # lexical_graph_ingestor = LexicalGraphIngestor(
+    #     vector_store=lexical_vector_store,
+    # )
 
-    property_graph_ingestor = PropertyGraphIngestor(
-        description="I have a set of F1 driver resumes. I need to know what information is tracked (like stats and teams), what specific details are inside those categories (like wins or years), and how the drivers, teams, and awards are linked together.",
-        llm=llm,
-        vector_store=property_vector_store,
-    )
+    # property_graph_ingestor = PropertyGraphIngestor(
+    #     description="I have a set of F1 driver resumes. I need to know what information is tracked (like stats and teams), what specific details are inside those categories (like wins or years), and how the drivers, teams, and awards are linked together.",
+    #     llm=llm,
+    #     vector_store=property_vector_store,
+    # )
 
-    pipeline = Pipeline(ingestors=[lexical_graph_ingestor, property_graph_ingestor])
+    # pipeline = Pipeline(ingestors=[lexical_graph_ingestor, property_graph_ingestor])
 
     # property_graph_ingestor._generate_community_summaries(
     #     file_metadata={"id": "88d4a7e879d54a619cc00ef64f96161f"}
     # )
 
-    pipeline.run(files)
+    # pipeline.run(files)
+
+    vector_search("How many championships Ayrton won?", property_vector_store)
 
 
 if __name__ == "__main__":
