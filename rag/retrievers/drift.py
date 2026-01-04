@@ -52,34 +52,12 @@ def primer_search(
     return answer.body, answer.follow_up_questions
 
 
-def process_follow_up(
+def drift_search(
     query: str,
     llm: BaseChatModel,
     vector_store: VectorStore,
     config: DriftConfig,
     depth: int = 1,
-) -> Node:
-    expanded_query = expand_query(query, llm)
-
-    top_communities = vector_search(expanded_query, vector_store, config["top_k"])
-    answer, follow_up_questions = primer_search(
-        query, top_communities, llm, config["max_follow_ups"]
-    )
-
-    node = Node(query=query, answer=answer)
-
-    if depth >= config.max_depth:
-        return node
-
-    for followup in follow_up_questions:
-        child = process_follow_up(followup, llm, vector_store, config, depth + 1)
-        node.add_child(child)
-
-    return node
-
-
-def drift_search(
-    query: str, llm: BaseChatModel, vector_store: VectorStore, config: DriftConfig
 ):
     # Step 1: Prepare initial query representation
     expanded_query = expand_query(query, llm)
@@ -90,10 +68,13 @@ def drift_search(
         query, top_communities, llm, config["max_follow_ups"]
     )
 
-    root = Node(query=query, answer=initial_answer)
+    node = Node(query=query, answer=initial_answer)
+
+    if depth >= config.get("max_depth", 3):
+        return node
 
     for follow_up in follow_up_questions:
-        child = process_follow_up(follow_up, llm, vector_store, config)
-        root.add_child(child)
+        child = drift_search(follow_up, llm, vector_store, config, depth + 1)
+        node.add_child(child)
 
-    return root
+    return node
