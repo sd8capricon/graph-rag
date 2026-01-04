@@ -23,7 +23,7 @@ answer_parser = PydanticOutputParser(pydantic_object=Answer)
 
 
 def expand_query(query: str, llm: BaseChatModel) -> str:
-    system_prompt = HYDE_SYSTEM_PROMPT.invoke({}).to_string
+    system_prompt = HYDE_SYSTEM_PROMPT.invoke({}).to_string()
     res = llm.invoke([SystemMessage(system_prompt), HumanMessage(f"Question {query}")])
     return query + res.content
 
@@ -39,7 +39,7 @@ def primer_search(
     )
     system_prompt = PRIMER_SEARCH_PROMPT.invoke(
         {
-            "follow_up_counts": max_follow_ups,
+            "follow_up_count": max_follow_ups,
             "output_instructions": answer_parser.get_format_instructions(),
         }
     ).to_string()
