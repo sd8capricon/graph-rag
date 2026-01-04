@@ -4,6 +4,8 @@ from langchain_core.vectorstores import VectorStore
 __all__ = ["vector_search"]
 
 
-def vector_search(query: str, vector_store: VectorStore) -> list[Document]:
-    documents = vector_store.similarity_search(query, 5)
+def vector_search(
+    query: str, vector_store: VectorStore, top_k: int = 5
+) -> list[Document]:
+    documents = vector_store.similarity_search(query, top_k)
     return documents

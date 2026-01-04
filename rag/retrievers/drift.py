@@ -1,3 +1,5 @@
+from typing import TypedDict
+
 from langchain.messages import HumanMessage, SystemMessage
 from langchain_core.documents import Document
 from langchain_core.language_models.chat_models import BaseChatModel
@@ -7,7 +9,6 @@ from langchain_core.vectorstores import VectorStore
 from rag.prompts.retrievers import HYDE_SYSTEM_PROMPT, PRIMER_SEARCH_PROMPT
 from rag.retrievers.vector import vector_search
 from rag.schema.retrievers import Answer, Node
-from typing import TypedDict
 
 
 class DriftConfig(TypedDict):
@@ -60,7 +61,7 @@ def process_follow_up(
 ) -> Node:
     expanded_query = expand_query(query, llm)
 
-    top_communities = vector_search(expanded_query, vector_store)
+    top_communities = vector_search(expanded_query, vector_store, config["top_k"])
     answer, follow_up_questions = primer_search(
         query, top_communities, llm, config["max_follow_ups"]
     )
@@ -84,7 +85,7 @@ def drift_search(
     expanded_query = expand_query(query, llm)
 
     # Step 2: Primer — global search for high-level context
-    top_communities = vector_search(expanded_query, vector_store)
+    top_communities = vector_search(expanded_query, vector_store, config["top_k"])
     initial_answer, follow_up_questions = primer_search(
         query, top_communities, llm, config["max_follow_ups"]
     )
@@ -95,4 +96,4 @@ def drift_search(
         child = process_follow_up(follow_up, llm, vector_store, config)
         root.add_child(child)
 
-    return Node
+    return root
