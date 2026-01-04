@@ -12,7 +12,7 @@ from ingestion.ingestors.lexical_graph import LexicalGraphIngestor
 from ingestion.ingestors.property_graph import PropertyGraphIngestor
 from ingestion.pipeline import Pipeline
 from ingestion.readers.markdown import MarkdownReader
-from rag.retrievers import vector_search
+from rag.retrievers import vector_search, drift_search
 
 load_dotenv()
 
@@ -93,7 +93,18 @@ def main() -> None:
 
     # pipeline.run(files)
 
-    vector_search("How many championships Ayrton won?", property_vector_store)
+    query = "How many championships Ayrton won?"
+    # res = vector_search(query, property_vector_store)
+    # print(res)
+
+    root = drift_search(
+        query,
+        llm,
+        property_vector_store,
+        config={"top_k": 5, "max_depth": 2, "max_follow_ups": 3},
+    )
+
+    print(root)
 
 
 if __name__ == "__main__":
