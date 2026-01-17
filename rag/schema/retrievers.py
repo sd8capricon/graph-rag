@@ -18,5 +18,5 @@ class Node(BaseModel):
     # Use a default_factory via Field to ensure each instance gets a fresh list
     children: list[Node] = Field(default_factory=list)
 
-    def add_child(self, node: "Node"):
+    def add_child(self, node: Node):
         self.children.append(node)
