@@ -1,5 +1,3 @@
-from typing import TypedDict
-
 from langchain.messages import HumanMessage, SystemMessage
 from langchain_core.documents import Document
 from langchain_core.language_models.chat_models import BaseChatModel
@@ -8,14 +6,7 @@ from langchain_core.vectorstores import VectorStore
 
 from rag.prompts.retrievers import HYDE_SYSTEM_PROMPT, PRIMER_SEARCH_PROMPT
 from rag.retrievers.vector import vector_search
-from rag.schema.retrievers import Answer, Node
-
-
-class DriftConfig(TypedDict):
-    top_k: int = 5
-    max_depth: int = 2
-    max_follow_ups: int = 3
-
+from rag.schema.retrievers import Answer, DriftConfig, Node
 
 __all__ = ["drift_search"]
 

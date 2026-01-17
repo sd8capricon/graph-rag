@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+from typing import TypedDict
+
 from pydantic import BaseModel, Field
 
 
@@ -10,6 +12,12 @@ class Answer(BaseModel):
     follow_up_questions: list[str] = Field(
         description="Follow up questions based on context"
     )
+
+
+class DriftConfig(TypedDict):
+    top_k: int = 5
+    max_depth: int = 2
+    max_follow_ups: int = 3
 
 
 class Node(BaseModel):
