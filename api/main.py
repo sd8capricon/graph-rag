@@ -1,7 +1,9 @@
 from fastapi import FastAPI
+
+from api.lifespan import lifespan
 from api.routers import chat
 
-app = FastAPI()
+app = FastAPI(lifespan=lifespan)
 
 
 @app.get("/")
