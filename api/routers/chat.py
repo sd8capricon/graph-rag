@@ -1,4 +1,4 @@
-from typing import Annotated
+from typing import Annotated, Callable
 
 from fastapi import APIRouter, Depends
 from langchain_neo4j.vectorstores.neo4j_vector import Neo4jVector
@@ -14,10 +14,11 @@ router = APIRouter()
 
 @router.post("")
 async def chat(
-    llm: Annotated[ChatOpenAI, get_llm],
+    llm: Annotated[ChatOpenAI, Depends(get_llm)],
     vector_store: Annotated[
-        Neo4jVector, provide_vector_store(VectorStoreName.community)
+        Neo4jVector, Depends(provide_vector_store(VectorStoreName.community))
     ],
 ):
+    print(type(vector_store))
     agent = create_rag_agent(llm)
     return {"message": "chat"}

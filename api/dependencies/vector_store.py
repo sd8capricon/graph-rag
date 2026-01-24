@@ -21,8 +21,8 @@ def get_vector_store_service() -> VectorStoreService:
 
 
 # Functions for dependency injection
-def provide_vector_store(name: VectorStoreName) -> Neo4jVector:
-    def _get_vector_store():
+def provide_vector_store(name: VectorStoreName):
+    def _get_vector_store() -> Neo4jVector:
         return get_vector_store_service().get_store(name.value)
 
     return _get_vector_store
