@@ -6,6 +6,12 @@ meta {
 
 post {
   url: {{local_url}}/chat
-  body: none
+  body: json
   auth: none
+}
+
+body:json {
+  {
+    "query": "What can you do?"
+  }
 }
