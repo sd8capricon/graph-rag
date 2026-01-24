@@ -1,5 +1,6 @@
 from contextlib import asynccontextmanager
-from api.dependencies.vector_store import VectorStoreService
+
+from api.services.vectorstore import VectorStoreService
 
 
 @asynccontextmanager
