@@ -25,7 +25,7 @@ async def chat(
         Neo4jVector, Depends(provide_vector_store(VectorStoreName.community))
     ],
 ):
-    res = agent.invoke(
+    result = agent.invoke(
         {"messages": [HumanMessage(payload.query)]},
         context=RAGContext(
             drift_config={"top_k": 5, "max_depth": 2, "max_follow_ups": 3},
@@ -33,4 +33,5 @@ async def chat(
             vector_store=vector_store,
         ),
     )
-    return {"message": res["messages"]}
+    last_message = result["messages"][-1]
+    return {"message": last_message}
