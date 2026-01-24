@@ -17,7 +17,7 @@ class VectorStoreService:
         for config in configs:
             self._stores[config.name] = self._build_store(config)
 
-    def _build_store(config: VectorStoreConfig) -> Neo4jVector:
+    def _build_store(self, config: VectorStoreConfig) -> Neo4jVector:
         kwargs = {
             "embedding": get_embedding(),
             "text_node_property": config.text_property,

@@ -7,7 +7,7 @@ from api.services.vector_store import VectorStoreService
 
 
 @asynccontextmanager
-async def lifespan():
+async def lifespan(app):
     # Initialize vector stores on startup
     service = VectorStoreService()
     configs = [
