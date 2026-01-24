@@ -1,0 +1,9 @@
+{
+  "version": "1",
+  "name": "GraphRAG",
+  "type": "collection",
+  "ignore": [
+    "node_modules",
+    ".git"
+  ]
+}
