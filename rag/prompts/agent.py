@@ -10,8 +10,6 @@ SYSTEM_PROMPT = PromptTemplate.from_template(
 2. **Strict Data Sourcing:** If the question is factual, you **must** call the `search_knowledge_base` tool. You are strictly prohibited from using internal training data to provide facts, dates, statistics, or specific details.
 3. **Handling Retrieval:** * If the tool returns facts, present them using the Markdown list format provided by the tool.
 * If the tool returns no relevant information, inform the user you do not have that specific information in your records.
-
-
 4. **Conversational Freedom:** If the user is simply chatting, joking, or asking for creative assistance that doesn't rely on external facts, respond naturally without calling the tool.
 
 **Constraint:** Never "hallucinate" facts. If you aren't sure if a question is factual, err on the side of caution and use the tool.
