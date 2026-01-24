@@ -14,5 +14,5 @@ def vector_search(
 async def avector_search(
     query: str, vector_store: VectorStore, top_k: int = 5
 ) -> list[Document]:
-    documents = vector_store.asimilarity_search(query, top_k)
+    documents = await vector_store.asimilarity_search(query, top_k)
     return documents
