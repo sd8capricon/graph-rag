@@ -1,5 +1,7 @@
+import json
+
 from common.graph.client import GraphClient
-from common.schema.knowledge_base import KnowledgeBase
+from common.schema.knowledge_base import KnowledgeBase, Ontology
 
 
 class KnowledgeBaseService:
@@ -7,7 +9,7 @@ class KnowledgeBaseService:
     def __init__(self, client: GraphClient):
         self.client = client
 
-    def create_knowledge_base(self, knowledge_base: KnowledgeBase):
+    def create(self, knowledge_base: KnowledgeBase):
         query = """//cypher
         CREATE (kb:KnowledgeBase {
           id: $id,
@@ -33,7 +35,36 @@ class KnowledgeBaseService:
 
         self.client.run_write(query, parameters)
 
-    def upsert_knowledge_base(self, knowledge_base: KnowledgeBase):
+    def get_by_id(self, id: str) -> KnowledgeBase | None:
+        query = """//cypher
+        MATCH (kb:KnowledgeBase {id: $id})
+        RETURN kb
+        """
+        parameters = {
+            "id": id,
+        }
+
+        result = self.client.run(query, parameters)
+
+        if not result:
+            return None
+
+        kb_data = result[0]["kb"]
+        ontology_json = kb_data.get("ontology")
+
+        ontology = None
+        if ontology_json:
+            ontology = Ontology.model_validate(json.loads(ontology_json))
+
+        return KnowledgeBase(
+            id=kb_data["id"],
+            name=kb_data["name"],
+            description=kb_data.get("description"),
+            knowledge_extraction_prompt=kb_data.get("knowledge_extraction_prompt"),
+            ontology=ontology,
+        )
+
+    def upsert(self, knowledge_base: KnowledgeBase):
         query = """//cypher
         MERGE (kb:KnowledgeBase {id: $id})
         ON CREATE SET

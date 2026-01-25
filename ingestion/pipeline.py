@@ -19,7 +19,7 @@ class Pipeline:
 
     def run(self, files: list[File]):
         logging.info("Started Pipeline for Files")
-        self.knowledge_base_service.upsert_knowledge_base(self.knowledge_base)
+        self.knowledge_base_service.upsert(self.knowledge_base)
         for file in files:
             for ingestor in self.ingestors:
                 ingestor.ingest(file.metadata, file.documents)
