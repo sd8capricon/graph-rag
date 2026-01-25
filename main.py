@@ -59,9 +59,9 @@ def check_ingestion(
 
     pipeline = Pipeline(ingestors=[lexical_graph_ingestor, property_graph_ingestor])
 
-    property_graph_ingestor._generate_community_summaries(
-        file_metadata={"id": "88d4a7e879d54a619cc00ef64f96161f"}
-    )
+    # property_graph_ingestor._generate_community_summaries(
+    #     file_metadata={"id": "88d4a7e879d54a619cc00ef64f96161f"}
+    # )
 
     pipeline.run(files)
 

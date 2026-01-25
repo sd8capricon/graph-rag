@@ -1,0 +1,50 @@
+from pathlib import Path
+from typing import Annotated
+
+from fastapi import APIRouter, BackgroundTasks, Depends
+from langchain_core.language_models.chat_models import BaseChatModel
+from langchain_neo4j.vectorstores.neo4j_vector import Neo4jVector
+
+from api.dependencies.llm import get_llm
+from api.dependencies.vector_store import provide_vector_store
+from api.enums.vector_store import VectorStoreName
+from api.schema.knowledge_base import IngestionRequest
+from ingestion.ingestors.lexical_graph import LexicalGraphIngestor
+from ingestion.ingestors.property_graph import PropertyGraphIngestor
+from ingestion.pipeline import Pipeline
+from ingestion.readers.markdown import MarkdownReader
+
+router = APIRouter()
+
+
+@router.post("/ingest")
+async def ingest(
+    background_tasks: BackgroundTasks,
+    payload: IngestionRequest,
+    llm: Annotated[BaseChatModel, Depends(get_llm)],
+    lexical_vector_store: Annotated[
+        Neo4jVector, Depends(provide_vector_store(VectorStoreName.lexical))
+    ],
+    property_vector_store: Annotated[
+        Neo4jVector, Depends(provide_vector_store(VectorStoreName.community))
+    ],
+):
+    file_paths = [
+        Path(__file__).resolve().parent.parent / "data" / file for file in payload.files
+    ]
+    files = [MarkdownReader(path).load() for path in file_paths]
+    lexical_graph_ingestor = LexicalGraphIngestor(
+        vector_store=lexical_vector_store,
+    )
+
+    property_graph_ingestor = PropertyGraphIngestor(
+        description="I have a set of F1 driver resumes. I need to know what information is tracked (like stats and teams), what specific details are inside those categories (like wins or years), and how the drivers, teams, and awards are linked together.",
+        llm=llm,
+        vector_store=property_vector_store,
+    )
+
+    pipeline = Pipeline(ingestors=[lexical_graph_ingestor, property_graph_ingestor])
+
+    return payload.model_dump()
+
+    # background_tasks.add_task(pipeline.run, files)

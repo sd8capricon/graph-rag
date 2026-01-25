@@ -15,4 +15,6 @@ class Ontology(BaseModel):
 class KnowledgeBase(BaseModel):
     id: str
     name: str
+    description: str | None = None
+    knowledge_extraction_prompt: str | None = None
     ontology: Ontology | None = None

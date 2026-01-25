@@ -1,0 +1,21 @@
+meta {
+  name: ingest
+  type: http
+  seq: 1
+}
+
+post {
+  url: {{local_url}}/knowledge_base/ingest
+  body: json
+  auth: none
+}
+
+body:json {
+  {
+    "knowledge_base":{
+      "id": "12",
+      "name": "test"
+    },
+    "files": ["ayrton_senna.md"]
+  }
+}
