@@ -22,5 +22,5 @@ class Pipeline:
         self.knowledge_base_service.upsert(self.knowledge_base)
         for file in files:
             for ingestor in self.ingestors:
-                ingestor.ingest(file.metadata, file.documents)
+                ingestor.ingest(self.knowledge_base, file.metadata, file.documents)
         logging.info("Pipeline Completed")
