@@ -14,6 +14,7 @@ from common.graph.client import GraphClient
 from common.graph.config import client_config
 from common.services.knowledge_base import KnowledgeBaseService
 from rag.agent import create_rag_agent
+from rag.types.agent import RAGAgent
 
 
 def init_neo4j() -> GraphClient:
@@ -83,7 +84,7 @@ async def init_vector_store() -> VectorStoreService:
     return vector_store_service
 
 
-def init_agent():
+def init_agent() -> RAGAgent:
     """
     Initialize and register the RAG agent.
 
@@ -91,7 +92,7 @@ def init_agent():
     configured LLM and registers it for dependency injection.
 
     Returns:
-        Any: The initialized RAG agent instance.
+        RAGAgent: The initialized RAG agent instance.
     """
     llm = get_llm()
     agent = create_rag_agent(llm)
