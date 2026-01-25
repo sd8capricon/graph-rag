@@ -10,6 +10,7 @@ from langchain_core.output_parsers import PydanticOutputParser
 from langchain_neo4j.vectorstores.neo4j_vector import Neo4jVector
 
 from common.schema.knowledge_base import KnowledgeBase, Ontology
+from common.services.knowledge_base import KnowledgeBaseService
 from ingestion.ingestors.base import BaseIngestor
 from ingestion.prompts.property_graph import (
     COMMUNITY_SUMMARIZATION_SYSTEM_PROMPT,
@@ -24,17 +25,17 @@ class PropertyGraphIngestor(BaseIngestor):
 
     def __init__(
         self,
-        knowledge_extraction_prompt: str,
         llm: BaseChatModel,
         vector_store: Neo4jVector,
         extract_community_summaries: bool = True,
         ontology: Ontology | None = None,
+        knowledge_base_service: KnowledgeBaseService | None = None,
     ):
-        self.knowledge_extraction_prompt = knowledge_extraction_prompt
         self.llm = llm
         self.vector_store = vector_store
         self.extract_community_summaries = extract_community_summaries
         self.ontology = ontology
+        self.knowledge_base_service = knowledge_base_service
 
         self.knowledge_base: KnowledgeBase | None = None
 
@@ -61,7 +62,10 @@ class PropertyGraphIngestor(BaseIngestor):
     ):
         if not self.ontology:
             if not knowledge_base.ontology:
-                knowledge_base.ontology = self._extract_ontology()
+                knowledge_base.ontology = self._extract_ontology(
+                    knowledge_base.knowledge_extraction_prompt
+                )
+                self.knowledge_base_service.upsert(knowledge_base)
             self.ontology = knowledge_base.ontology
 
         if not self.knowledge_base:
@@ -116,11 +120,11 @@ class PropertyGraphIngestor(BaseIngestor):
             )
             logging.info(f"Completed Community Summary Extraction")
 
-    def _extract_ontology(self) -> Ontology:
+    def _extract_ontology(self, knowledge_extraction_prompt: str) -> Ontology:
         res = self.llm.invoke(
             [
                 SystemMessage(self._ontology_system_prompt.invoke({}).to_string()),
-                HumanMessage(self.knowledge_extraction_prompt),
+                HumanMessage(knowledge_extraction_prompt),
             ]
         )
         parsed: Ontology = self._ontology_parser.invoke(res.content)

@@ -40,8 +40,6 @@ async def ingest(
 
     property_graph_ingestor = PropertyGraphIngestor(
         knowledge_base=payload.knowledge_base,
-        knowledge_extraction_prompt=payload.knowledge_base.knowledge_extraction_prompt,
-        ontology=payload.knowledge_base.ontology,
         llm=llm,
         vector_store=property_vector_store,
     )
