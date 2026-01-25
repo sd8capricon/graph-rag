@@ -9,7 +9,7 @@ from langchain_core.language_models.chat_models import BaseChatModel
 from langchain_core.output_parsers import PydanticOutputParser
 from langchain_neo4j.vectorstores.neo4j_vector import Neo4jVector
 
-from common.schema.knowledge_base import Ontology
+from common.schema.knowledge_base import KnowledgeBase, Ontology
 from ingestion.ingestors.base import BaseIngestor
 from ingestion.prompts.property_graph import (
     COMMUNITY_SUMMARIZATION_SYSTEM_PROMPT,
@@ -24,15 +24,17 @@ class PropertyGraphIngestor(BaseIngestor):
 
     def __init__(
         self,
-        description: str,
+        knowledge_extraction_prompt: str,
         llm: BaseChatModel,
         vector_store: Neo4jVector,
+        knowledge_base: KnowledgeBase,
         extract_community_summaries: bool = True,
         ontology: Ontology | None = None,
     ):
-        self.description = description
+        self.description = knowledge_extraction_prompt
         self.llm = llm
         self.vector_store = vector_store
+        self.knowledge_base = knowledge_base
         self.extract_community_summaries = extract_community_summaries
         self.ontology = ontology
 
@@ -173,7 +175,7 @@ class PropertyGraphIngestor(BaseIngestor):
 
     def _create_entity_and_links(self, entity: Entity, file_metadata: FileMetadata):
         create_entity_query = f"""
-        MERGE (e:{entity.entity_label} {{id: $entity_id, source_id: $file_id}})
+        MERGE (e:{entity.entity_label} {{id: $entity_id, knowledge_base_id: $knowledge_base_id, source_id: $file_id}})
         SET e += $properties
         """
 
@@ -182,6 +184,7 @@ class PropertyGraphIngestor(BaseIngestor):
                 create_entity_query,
                 params={
                     "entity_id": entity.id,
+                    "knowledge_base_id": self.knowledge_base.id,
                     "file_id": file_metadata["id"],
                     "properties": entity.properties or {},
                 },
@@ -234,7 +237,7 @@ class PropertyGraphIngestor(BaseIngestor):
         }
 
         self.vector_store.query(
-            """
+            """//cypher
             CALL gds.graph.project('kg', $node_labels, $relationship_projections)
             YIELD graphName
             CALL gds.leiden.write("kg", {writeProperty: "community_id"})
@@ -250,7 +253,7 @@ class PropertyGraphIngestor(BaseIngestor):
         self.vector_store.query("CALL gds.graph.drop('kg', false) YIELD graphName")
 
         self.vector_store.query(
-            """
+            """//cypher
             MATCH (e {source_id: $source_id}) 
             WHERE e.community_id IS NOT NULL 
             SET e.community_id = toString(e.source_id) + "_" + toString(e.community_id)
@@ -259,25 +262,29 @@ class PropertyGraphIngestor(BaseIngestor):
         )
 
         self.vector_store.query(
-            """
+            """//cypher
             MATCH (e {source_id: $source_id})
             WHERE NOT e:Chunk AND e.community_id IS NOT NULL
             WITH DISTINCT e.community_id AS id, collect(e) AS entities
             MERGE (c:Community {id: id})
-            ON CREATE SET c.source_id = $source_id
+            ON CREATE SET c.source_id = $source_id, c.knowledge_base_id = $knowledge_base_id
             WITH c, entities
             UNWIND entities AS e
             MERGE (e)-[:IN_COMMUNITY]->(c)
             RETURN c.id;
             """,
-            params={"source_id": file_metadata["id"], "node_labels": node_labels},
+            params={
+                "source_id": file_metadata["id"],
+                "knowledge_base_id": self.knowledge_base.id,
+                "node_labels": node_labels,
+            },
         )
 
     def _generate_community_summaries(self, file_metadata: FileMetadata):
 
         embedding = self.vector_store.embedding
         raw_query_result: list[dict[str, str | list[dict]]] = self.vector_store.query(
-            """
+            """//cypher
             MATCH (e)-[:IN_COMMUNITY]->(c {source_id: $source_id})
             WITH c, collect(e) AS entities
 

@@ -3,6 +3,7 @@ import logging
 from langchain_core.documents import Document
 from langchain_neo4j.vectorstores.neo4j_vector import Neo4jVector
 
+from common.schema.knowledge_base import KnowledgeBase
 from ingestion.ingestors.base import BaseIngestor
 from ingestion.schema.file import FileMetadata
 
@@ -12,15 +13,19 @@ class LexicalGraphIngestor(BaseIngestor):
     def __init__(
         self,
         vector_store: Neo4jVector,
+        knowledge_base: KnowledgeBase,
         lexical_threshold: float = 0.75,
     ):
         self.vector_store = vector_store
+        self.knowledge_base = knowledge_base
         self.lexical_threshold = lexical_threshold
 
         self.vector_store.create_new_index()
 
     def ingest(self, file_metadata: FileMetadata, documents: list[Document]):
         logging.info(f"Ingesting Lexical Graph File {file_metadata['name']}")
+        for document in documents:
+            document.metadata["knowledge_base_id"] = self.knowledge_base.id
         document_ids = self._build_vectorstore(documents)
 
         self._create_file_node(file_metadata)
@@ -38,6 +43,7 @@ class LexicalGraphIngestor(BaseIngestor):
                 MERGE (f:File {id: $id})
                 ON CREATE SET 
                     f.name = $name,
+                    f.knowledge_base_id = $knowledge_base_id
                     f.createdAt = timestamp()
                 ON MATCH SET 
                     f.name = $name
@@ -48,7 +54,11 @@ class LexicalGraphIngestor(BaseIngestor):
                 MERGE (c)-[:CHUNK_OF]->(f)
                 RETURN f
             """,
-            params={"id": file_metadata["id"], "name": file_metadata["name"]},
+            params={
+                "id": file_metadata["id"],
+                "name": file_metadata["name"],
+                "knowledge_base_id": self.knowledge_base.id,
+            },
         )
 
     def _build_lexical_graph(self, document_ids: list[str]):

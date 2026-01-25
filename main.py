@@ -52,7 +52,7 @@ def check_ingestion(
     )
 
     property_graph_ingestor = PropertyGraphIngestor(
-        description="I have a set of F1 driver resumes. I need to know what information is tracked (like stats and teams), what specific details are inside those categories (like wins or years), and how the drivers, teams, and awards are linked together.",
+        knowledge_extraction_prompt="I have a set of F1 driver resumes. I need to know what information is tracked (like stats and teams), what specific details are inside those categories (like wins or years), and how the drivers, teams, and awards are linked together.",
         llm=llm,
         vector_store=property_vector_store,
     )
