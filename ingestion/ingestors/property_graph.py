@@ -30,11 +30,13 @@ class PropertyGraphIngestor(BaseIngestor):
         extract_community_summaries: bool = True,
         ontology: Ontology | None = None,
     ):
-        self.description = knowledge_extraction_prompt
+        self.knowledge_extraction_prompt = knowledge_extraction_prompt
         self.llm = llm
         self.vector_store = vector_store
         self.extract_community_summaries = extract_community_summaries
         self.ontology = ontology
+
+        self.knowledge_base: KnowledgeBase | None = None
 
         self._ontology_parser = PydanticOutputParser(pydantic_object=Ontology)
         self._triplet_parser = PydanticOutputParser(pydantic_object=EntityRelationships)
@@ -58,7 +60,12 @@ class PropertyGraphIngestor(BaseIngestor):
         documents: list[Document],
     ):
         if not self.ontology:
-            self.ontology = self._extract_ontology()
+            if not knowledge_base.ontology:
+                knowledge_base.ontology = self._extract_ontology()
+            self.ontology = knowledge_base.ontology
+
+        if not self.knowledge_base:
+            self.knowledge_base = knowledge_base
 
         entities: list[Entity] = []
         triplets: list[Triplet] = []
@@ -113,7 +120,7 @@ class PropertyGraphIngestor(BaseIngestor):
         res = self.llm.invoke(
             [
                 SystemMessage(self._ontology_system_prompt.invoke({}).to_string()),
-                HumanMessage(self.description),
+                HumanMessage(self.knowledge_extraction_prompt),
             ]
         )
         parsed: Ontology = self._ontology_parser.invoke(res.content)
@@ -176,9 +183,7 @@ class PropertyGraphIngestor(BaseIngestor):
 
         return new_entities, new_triplets
 
-    def _create_entity_and_links(
-        self, knowledge_base: KnowledgeBase, entity: Entity, file_metadata: FileMetadata
-    ):
+    def _create_entity_and_links(self, entity: Entity, file_metadata: FileMetadata):
         create_entity_query = f"""
         MERGE (e:{entity.entity_label} {{id: $entity_id, knowledge_base_id: $knowledge_base_id, source_id: $file_id}})
         SET e += $properties
@@ -189,7 +194,7 @@ class PropertyGraphIngestor(BaseIngestor):
                 create_entity_query,
                 params={
                     "entity_id": entity.id,
-                    "knowledge_base_id": knowledge_base.id,
+                    "knowledge_base_id": self.knowledge_base.id,
                     "file_id": file_metadata["id"],
                     "properties": entity.properties or {},
                 },
@@ -224,19 +229,15 @@ class PropertyGraphIngestor(BaseIngestor):
     def _extract_community_summaries(
         self,
         file_metadata: FileMetadata,
-        knowledge_base: KnowledgeBase,
         node_labels: list[str],
         relationship_labels: list[str],
     ):
-        self._make_community_nodes(
-            file_metadata, knowledge_base, node_labels, relationship_labels
-        )
+        self._make_community_nodes(file_metadata, node_labels, relationship_labels)
         self._generate_community_summaries(file_metadata)
 
     def _make_community_nodes(
         self,
         file_metadata: FileMetadata,
-        knowledge_base: KnowledgeBase,
         node_labels: list[str],
         relationship_labels: list[str],
     ):
@@ -284,7 +285,7 @@ class PropertyGraphIngestor(BaseIngestor):
             """,
             params={
                 "source_id": file_metadata["id"],
-                "knowledge_base_id": knowledge_base.id,
+                "knowledge_base_id": self.knowledge_base.id,
                 "node_labels": node_labels,
             },
         )
