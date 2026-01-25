@@ -42,7 +42,6 @@ async def ingest(
     )
 
     property_graph_ingestor = PropertyGraphIngestor(
-        knowledge_base=payload.knowledge_base,
         llm=llm,
         vector_store=property_vector_store,
         knowledge_base_service=knowledge_base_service,
@@ -54,6 +53,4 @@ async def ingest(
         ingestors=[lexical_graph_ingestor, property_graph_ingestor],
     )
 
-    return payload.model_dump()
-
-    # background_tasks.add_task(pipeline.run, files)
+    background_tasks.add_task(pipeline.run, files)
