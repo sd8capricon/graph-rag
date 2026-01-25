@@ -8,3 +8,12 @@ def neo4j_config():
         url=require_env("NEO4J_URI"),
         embedding_dimension=768,
     )
+
+
+def client_config():
+    return dict(
+        uri=require_env("NEO4J_URI"),
+        username=require_env("NEO4J_USER"),
+        password=require_env("NEO4J_PASSWORD"),
+        database=require_env("NEO4J_DATABASE"),
+    )
