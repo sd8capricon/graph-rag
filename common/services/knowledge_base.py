@@ -35,6 +35,27 @@ class KnowledgeBaseService:
 
         self.client.run_write(query, parameters)
 
+    def get_ontology_by_id(self, knowledge_base_id: str) -> Ontology | None:
+        query = """//cypher
+        MATCH (kb:KnowledgeBase {id: $id})
+        RETURN kb.ontology as ontology
+        """
+        parameters = {
+            "id": knowledge_base_id,
+        }
+
+        result = self.client.run(query, parameters)
+
+        if not result:
+            return None
+
+        ontology_json = result[0].get("ontology")
+
+        if not ontology_json:
+            return None
+
+        return Ontology.model_validate(json.loads(ontology_json))
+
     def get_by_id(self, id: str) -> KnowledgeBase | None:
         query = """//cypher
         MATCH (kb:KnowledgeBase {id: $id})
