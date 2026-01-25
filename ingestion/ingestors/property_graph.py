@@ -27,14 +27,12 @@ class PropertyGraphIngestor(BaseIngestor):
         knowledge_extraction_prompt: str,
         llm: BaseChatModel,
         vector_store: Neo4jVector,
-        knowledge_base: KnowledgeBase,
         extract_community_summaries: bool = True,
         ontology: Ontology | None = None,
     ):
         self.description = knowledge_extraction_prompt
         self.llm = llm
         self.vector_store = vector_store
-        self.knowledge_base = knowledge_base
         self.extract_community_summaries = extract_community_summaries
         self.ontology = ontology
 
@@ -53,7 +51,12 @@ class PropertyGraphIngestor(BaseIngestor):
 
         self.vector_store.create_new_index()
 
-    def ingest(self, file_metadata: FileMetadata, documents: list[Document]):
+    def ingest(
+        self,
+        knowledge_base: KnowledgeBase,
+        file_metadata: FileMetadata,
+        documents: list[Document],
+    ):
         if not self.ontology:
             self.ontology = self._extract_ontology()
 
@@ -89,7 +92,7 @@ class PropertyGraphIngestor(BaseIngestor):
         relationship_labels: list[str] = ["SIMILAR"]
         for entity in entities:
             node_labels.append(entity.entity_label)
-            self._create_entity_and_links(entity, file_metadata)
+            self._create_entity_and_links(knowledge_base, entity, file_metadata)
         for triplet in triplets:
             relationship_labels.append(triplet.relationship)
             self._create_triplet_relationship(triplet)
@@ -102,7 +105,7 @@ class PropertyGraphIngestor(BaseIngestor):
                     "Please provide a BaseChatModel instance during initialization."
                 )
             self._extract_community_summaries(
-                file_metadata, node_labels, relationship_labels
+                file_metadata, knowledge_base, node_labels, relationship_labels
             )
             logging.info(f"Completed Community Summary Extraction")
 
@@ -173,7 +176,9 @@ class PropertyGraphIngestor(BaseIngestor):
 
         return new_entities, new_triplets
 
-    def _create_entity_and_links(self, entity: Entity, file_metadata: FileMetadata):
+    def _create_entity_and_links(
+        self, knowledge_base: KnowledgeBase, entity: Entity, file_metadata: FileMetadata
+    ):
         create_entity_query = f"""
         MERGE (e:{entity.entity_label} {{id: $entity_id, knowledge_base_id: $knowledge_base_id, source_id: $file_id}})
         SET e += $properties
@@ -184,7 +189,7 @@ class PropertyGraphIngestor(BaseIngestor):
                 create_entity_query,
                 params={
                     "entity_id": entity.id,
-                    "knowledge_base_id": self.knowledge_base.id,
+                    "knowledge_base_id": knowledge_base.id,
                     "file_id": file_metadata["id"],
                     "properties": entity.properties or {},
                 },
@@ -219,15 +224,19 @@ class PropertyGraphIngestor(BaseIngestor):
     def _extract_community_summaries(
         self,
         file_metadata: FileMetadata,
+        knowledge_base: KnowledgeBase,
         node_labels: list[str],
         relationship_labels: list[str],
     ):
-        self._make_community_nodes(file_metadata, node_labels, relationship_labels)
+        self._make_community_nodes(
+            file_metadata, knowledge_base, node_labels, relationship_labels
+        )
         self._generate_community_summaries(file_metadata)
 
     def _make_community_nodes(
         self,
         file_metadata: FileMetadata,
+        knowledge_base: KnowledgeBase,
         node_labels: list[str],
         relationship_labels: list[str],
     ):
@@ -275,7 +284,7 @@ class PropertyGraphIngestor(BaseIngestor):
             """,
             params={
                 "source_id": file_metadata["id"],
-                "knowledge_base_id": self.knowledge_base.id,
+                "knowledge_base_id": knowledge_base.id,
                 "node_labels": node_labels,
             },
         )

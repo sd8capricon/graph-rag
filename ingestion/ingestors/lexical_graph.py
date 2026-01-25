@@ -13,19 +13,22 @@ class LexicalGraphIngestor(BaseIngestor):
     def __init__(
         self,
         vector_store: Neo4jVector,
-        knowledge_base: KnowledgeBase,
         lexical_threshold: float = 0.75,
     ):
         self.vector_store = vector_store
-        self.knowledge_base = knowledge_base
         self.lexical_threshold = lexical_threshold
 
         self.vector_store.create_new_index()
 
-    def ingest(self, file_metadata: FileMetadata, documents: list[Document]):
+    def ingest(
+        self,
+        knowledge_base: KnowledgeBase,
+        file_metadata: FileMetadata,
+        documents: list[Document],
+    ):
         logging.info(f"Ingesting Lexical Graph File {file_metadata['name']}")
         for document in documents:
-            document.metadata["knowledge_base_id"] = self.knowledge_base.id
+            document.metadata["knowledge_base_id"] = knowledge_base.id
         document_ids = self._build_vectorstore(documents)
 
         self._create_file_node(file_metadata)
