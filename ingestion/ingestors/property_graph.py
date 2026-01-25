@@ -9,13 +9,14 @@ from langchain_core.language_models.chat_models import BaseChatModel
 from langchain_core.output_parsers import PydanticOutputParser
 from langchain_neo4j.vectorstores.neo4j_vector import Neo4jVector
 
+from common.schema.knowledge_base import Ontology
 from ingestion.ingestors.base import BaseIngestor
 from ingestion.prompts.property_graph import (
     COMMUNITY_SUMMARIZATION_SYSTEM_PROMPT,
     EXTRACTION_SYSTEM_PROMPT,
     ONTOLOGY_SYSTEM_PROMPT,
 )
-from ingestion.schema.extractor import Entity, EntityRelationships, Ontology, Triplet
+from ingestion.schema.extractor import Entity, EntityRelationships, Triplet
 from ingestion.schema.file import FileMetadata
 
 

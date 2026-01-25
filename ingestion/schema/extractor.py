@@ -1,17 +1,6 @@
 from pydantic import BaseModel, ConfigDict, Field
 
 
-class RelationshipRule(BaseModel):
-    source_label: str
-    relationship: str
-    target_label: str
-
-
-class Ontology(BaseModel):
-    entity_labels: list[str]
-    relationship_rules: list[RelationshipRule]
-
-
 class Entity(BaseModel):
     model_config = ConfigDict(extra="allow")
 
