@@ -16,15 +16,19 @@ from common.services.knowledge_base import KnowledgeBaseService
 from rag.agent import create_rag_agent
 
 
-@asynccontextmanager
-async def lifespan(app: FastAPI):
-    # Initialize neo4j connection
+def init_neo4j() -> GraphClient:
     neo4j_connection = GraphClient(**client_config())
     set_neo4j_connection(neo4j_connection)
-    # Initialize knowledge base service
-    kb_service = KnowledgeBaseService(neo4j_connection)
+    return neo4j_connection
+
+
+def init_kb_service(connection: GraphClient) -> KnowledgeBaseService:
+    kb_service = KnowledgeBaseService(connection)
     set_kb_service(kb_service)
-    # Initialize vector stores on startup
+    return kb_service
+
+
+async def init_vector_store() -> VectorStoreService:
     vector_store_service = VectorStoreService()
     configs = [
         VectorStoreConfig(
@@ -37,14 +41,33 @@ async def lifespan(app: FastAPI):
             name=VectorStoreName.lexical,
             text_property="text",
             index_name="vector_index",
-            retrieval_query="RETURN node.text AS text, score, node {.*, text: Null, embedding:Null} as metadata",
+            retrieval_query=(
+                "RETURN node.text AS text, score, "
+                "node {.*, text: Null, embedding:Null} as metadata"
+            ),
         ),
     ]
     await vector_store_service.initialize(configs)
     set_vector_store_service(vector_store_service)
-    # Initialize agent
+    return vector_store_service
+
+
+def init_agent():
     llm = get_llm()
     agent = create_rag_agent(llm)
     set_agent(agent)
-    yield
+    return agent
+
+
+def shutdown():
     close_neo4j_connection()
+
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    neo4j_connection = init_neo4j()
+    init_kb_service(neo4j_connection)
+    await init_vector_store()
+    init_agent()
+    yield
+    shutdown()
