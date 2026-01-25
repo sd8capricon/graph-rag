@@ -17,18 +17,49 @@ from rag.agent import create_rag_agent
 
 
 def init_neo4j() -> GraphClient:
+    """
+    Initialize and register the Neo4j graph client.
+
+    Creates a GraphClient using application configuration, registers it
+    in the dependency container, and returns the initialized connection.
+
+    Returns:
+        GraphClient: The initialized Neo4j graph client.
+    """
     neo4j_connection = GraphClient(**client_config())
     set_neo4j_connection(neo4j_connection)
     return neo4j_connection
 
 
 def init_kb_service(connection: GraphClient) -> KnowledgeBaseService:
+    """
+    Initialize and register the Knowledge Base service.
+
+    Wraps the provided Neo4j connection in a KnowledgeBaseService and
+    registers it for dependency injection.
+
+    Args:
+        connection (GraphClient): Active Neo4j graph connection.
+
+    Returns:
+        KnowledgeBaseService: The initialized knowledge base service.
+    """
     kb_service = KnowledgeBaseService(connection)
     set_kb_service(kb_service)
     return kb_service
 
 
 async def init_vector_store() -> VectorStoreService:
+    """
+    Initialize and register the Vector Store service.
+
+    Configures multiple vector stores with their respective schemas and
+    initializes them asynchronously, then registers the service for use
+    across the application.
+
+    Returns:
+        VectorStoreService: The initialized vector store service.
+    """
     vector_store_service = VectorStoreService()
     configs = [
         VectorStoreConfig(
@@ -53,6 +84,15 @@ async def init_vector_store() -> VectorStoreService:
 
 
 def init_agent():
+    """
+    Initialize and register the RAG agent.
+
+    Creates a retrieval-augmented generation (RAG) agent using the
+    configured LLM and registers it for dependency injection.
+
+    Returns:
+        Any: The initialized RAG agent instance.
+    """
     llm = get_llm()
     agent = create_rag_agent(llm)
     set_agent(agent)
@@ -60,11 +100,34 @@ def init_agent():
 
 
 def shutdown():
+    """
+    Cleanly shut down application resources.
+
+    Closes the Neo4j connection and releases any related resources.
+    """
     close_neo4j_connection()
 
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
+    """
+    Manage application startup and shutdown lifecycle.
+
+    On startup:
+        - Initializes Neo4j connection
+        - Sets up the knowledge base service
+        - Initializes vector stores
+        - Creates and registers the RAG agent
+
+    On shutdown:
+        - Closes the Neo4j connection
+
+    Args:
+        app (FastAPI): The FastAPI application instance.
+
+    Yields:
+        None: Control is yielded back to FastAPI during app runtime.
+    """
     neo4j_connection = init_neo4j()
     init_kb_service(neo4j_connection)
     await init_vector_store()
