@@ -46,7 +46,10 @@ async def ingest(
         vector_store=property_vector_store,
     )
 
-    pipeline = Pipeline(ingestors=[lexical_graph_ingestor, property_graph_ingestor])
+    pipeline = Pipeline(
+        knowledge_base=payload.knowledge_base,
+        ingestors=[lexical_graph_ingestor, property_graph_ingestor],
+    )
 
     return payload.model_dump()
 
