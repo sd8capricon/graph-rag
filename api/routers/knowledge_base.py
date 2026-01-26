@@ -37,7 +37,6 @@ async def ingest(
     ]
     files = [MarkdownReader(path).load() for path in file_paths]
     lexical_graph_ingestor = LexicalGraphIngestor(
-        knowledge_base=payload.knowledge_base,
         vector_store=lexical_vector_store,
     )
 

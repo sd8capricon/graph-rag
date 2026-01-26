@@ -1,3 +1,4 @@
+import logging
 from contextlib import asynccontextmanager
 
 from fastapi import FastAPI
@@ -13,6 +14,7 @@ from api.services.vector_store import VectorStoreService
 from common.graph.client import GraphClient
 from common.graph.config import client_config
 from common.services.knowledge_base import KnowledgeBaseService
+from common.utils.logger import setup_logger
 from rag.agent import create_rag_agent
 from rag.types.agent import RAGAgent
 
@@ -129,6 +131,7 @@ async def lifespan(app: FastAPI):
     Yields:
         None: Control is yielded back to FastAPI during app runtime.
     """
+    setup_logger()
     neo4j_connection = init_neo4j()
     init_kb_service(neo4j_connection)
     await init_vector_store()
