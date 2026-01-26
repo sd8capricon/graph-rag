@@ -16,6 +16,7 @@ class LexicalGraphIngestor(BaseIngestor):
         lexical_threshold: float = 0.75,
     ):
         logging.debug("Initializing LexicalGraphIngestor")
+        self.knowledge_base: KnowledgeBase | None = None
         self.vector_store = vector_store
         self.lexical_threshold = lexical_threshold
         logging.debug(f"Lexical threshold set to: {self.lexical_threshold}")
@@ -30,6 +31,9 @@ class LexicalGraphIngestor(BaseIngestor):
         documents: list[Document],
     ):
         logging.info(f"Ingesting Lexical Graph File {file_metadata['name']}")
+        if not self.knowledge_base:
+            self.knowledge_base = knowledge_base
+
         logging.debug(
             f"Processing {len(documents)} documents for file: {file_metadata['name']}"
         )
@@ -80,10 +84,14 @@ class LexicalGraphIngestor(BaseIngestor):
                         f.createdAt = timestamp()
                     ON MATCH SET 
                         f.name = $name
-                    // 2. Find all existing Chunks that belong to this file
+                    // 2. Match the KnowledgeBase and link it to the File
+                    WITH f
+                    MATCH (kb:KnowledgeBase {id: $knowledge_base_id})
+                    MERGE (kb)-[:HAS_FILE]->(f)
+                    // 3. Find all existing Chunks that belong to this file
                     WITH f
                     MATCH (c:Chunk {source_id: f.id})
-                    // 3. Create the relationship
+                    // 4. Create the relationship
                     MERGE (c)-[:CHUNK_OF]->(f)
                     RETURN f
                 """,
@@ -156,6 +164,7 @@ class LexicalGraphIngestor(BaseIngestor):
             similarity_search = self.vector_store.similarity_search_with_score_by_vector(
                 embedding,
                 3,
+                filter={"knowledge_base_id": self.knowledge_base.id},
                 query="",  # query is added to avoid internal error, not actually used
             )
             logging.debug(
