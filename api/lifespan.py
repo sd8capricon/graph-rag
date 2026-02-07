@@ -1,7 +1,10 @@
-import logging
+import os
 from contextlib import asynccontextmanager
 
+import aiosqlite
 from fastapi import FastAPI
+from langgraph.checkpoint.base import BaseCheckpointSaver
+from langgraph.checkpoint.sqlite.aio import AsyncSqliteSaver
 
 from api.dependencies.agent import set_agent
 from api.dependencies.database import close_neo4j_connection, set_neo4j_connection
@@ -17,6 +20,8 @@ from common.services.knowledge_base import KnowledgeBaseService
 from common.utils.logger import setup_logger
 from rag.agent import create_rag_agent
 from rag.types.agent import RAGAgent
+
+SQL_LITE_DB = os.getenv("SQL_LITE_DB", "database.db")
 
 
 def init_neo4j() -> GraphClient:
@@ -86,7 +91,7 @@ async def init_vector_store() -> VectorStoreService:
     return vector_store_service
 
 
-def init_agent() -> RAGAgent:
+async def init_agent(checkpointer: BaseCheckpointSaver | None = None) -> RAGAgent:
     """
     Initialize and register the RAG agent.
 
@@ -97,7 +102,7 @@ def init_agent() -> RAGAgent:
         RAGAgent: The initialized RAG agent instance.
     """
     llm = get_llm()
-    agent = create_rag_agent(llm)
+    agent = create_rag_agent(llm, checkpointer)
     set_agent(agent)
     return agent
 
@@ -114,27 +119,40 @@ def shutdown():
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     """
-    Manage application startup and shutdown lifecycle.
+    Manage the FastAPI application startup and shutdown lifecycle.
 
-    On startup:
-        - Initializes Neo4j connection
-        - Sets up the knowledge base service
-        - Initializes vector stores
-        - Creates and registers the RAG agent
+    Startup sequence:
+        - Configure application logging
+        - Initialize the Neo4j database connection
+        - Initialize the knowledge base service
+        - Initialize vector stores
+        - Open an asynchronous SQLite connection
+        - Create the AsyncSqliteSaver checkpointer
+        - Initialize and register the RAG agent
 
-    On shutdown:
-        - Closes the Neo4j connection
+    Shutdown sequence:
+        - Close the asynchronous SQLite connection
+        - Perform application shutdown and resource cleanup
+
+    Notes:
+        - The SQLite connection is kept open for the lifetime of the application
+          and is explicitly closed during shutdown to prevent event loop hangs.
+        - All initialization steps must complete successfully before the
+          application starts accepting requests.
 
     Args:
         app (FastAPI): The FastAPI application instance.
 
     Yields:
-        None: Control is yielded back to FastAPI during app runtime.
+        None: Control is yielded to FastAPI for the duration of the application runtime.
     """
     setup_logger()
     neo4j_connection = init_neo4j()
     init_kb_service(neo4j_connection)
     await init_vector_store()
-    init_agent()
+    sqlite_conn = await aiosqlite.connect(SQL_LITE_DB)
+    checkpointer = AsyncSqliteSaver(sqlite_conn)
+    await init_agent(checkpointer)
     yield
+    sqlite_conn.close()
     shutdown()

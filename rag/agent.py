@@ -1,5 +1,6 @@
 from langchain.agents import create_agent
 from langchain_core.language_models.chat_models import BaseChatModel
+from langgraph.checkpoint.base import BaseCheckpointSaver
 
 from rag.prompts.agent import SYSTEM_PROMPT
 from rag.schema.agent import RAGContext
@@ -7,11 +8,15 @@ from rag.tools.search import asearch_knowledge_base, asimilarity_search_tool
 from rag.types.agent import RAGAgent
 
 
-def create_rag_agent(llm: BaseChatModel) -> RAGAgent:
+def create_rag_agent(
+    llm: BaseChatModel, checkpointer: BaseCheckpointSaver | None = None
+) -> RAGAgent:
+
     agent = create_agent(
         model=llm,
         system_prompt=SYSTEM_PROMPT.invoke({}).to_string(),
         tools=[asearch_knowledge_base, asimilarity_search_tool],
         context_schema=RAGContext,
+        checkpointer=checkpointer,
     )
     return agent
