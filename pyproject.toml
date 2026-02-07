@@ -12,6 +12,7 @@ dependencies = [
     "langchain-neo4j>=0.6.0",
     "langchain-openai>=1.1.6",
     "langchain-text-splitters>=1.1.0",
+    "langgraph-checkpoint-sqlite>=3.0.3",
     "numpy>=2.4.0",
     "pydantic>=2.12.5",
     "python-dotenv>=1.2.1",
