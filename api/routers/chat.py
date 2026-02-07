@@ -1,4 +1,5 @@
 from typing import Annotated
+from uuid import uuid4
 
 from fastapi import APIRouter, Depends
 from langchain.messages import HumanMessage
@@ -9,14 +10,14 @@ from api.dependencies.agent import get_rag_agent
 from api.dependencies.llm import get_llm
 from api.dependencies.vector_store import provide_vector_store
 from api.enums.vector_store import VectorStoreName
-from api.schema.chat import ChatRequest
+from api.schema.chat import ChatRequest, ChatResponse
 from rag.schema.agent import RAGContext
 from rag.types.agent import RAGAgent
 
 router = APIRouter()
 
 
-@router.post("")
+@router.post("", response_model=ChatResponse)
 async def chat(
     payload: ChatRequest,
     agent: Annotated[RAGAgent, Depends(get_rag_agent)],
@@ -28,6 +29,9 @@ async def chat(
         Neo4jVector, Depends(provide_vector_store(VectorStoreName.community))
     ],
 ):
+    # Create a new thread id if not provided
+    thread_id = payload.thread_id or str(uuid4())
+
     result = await agent.ainvoke(
         {"messages": [HumanMessage(payload.query)]},
         context=RAGContext(
@@ -36,6 +40,8 @@ async def chat(
             lexical_vector_store=lexical_vector_store,
             commuunity_vector_store=community_vector_store,
         ),
+        config={"configurable": {"thread_id": thread_id}},
     )
     last_message = result["messages"][-1]
-    return {"message": last_message}
+
+    return ChatResponse(thread_id=thread_id, message=last_message)
