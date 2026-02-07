@@ -1,7 +1,7 @@
 from langchain.tools import ToolRuntime, tool
 
 from rag.retrievers.drift import adrift_search, drift_search
-from rag.retrievers.similarity import asimilarity_search
+from rag.retrievers.similarity import asimilarity_search, similarity_search
 from rag.schema.agent import RAGContext
 from rag.utils.retrievers import collect_answers
 
@@ -44,6 +44,15 @@ async def asearch_knowledge_base(query: str, runtime: ToolRuntime[RAGContext]) -
     name_or_callable="similarity_search",
     description="Retrieves facts related to the user's query. Use this to give an initial answer to the user's query",
 )
-async def asimilarity_search(query: str, runtime: ToolRuntime[RAGContext]):
+def similarity_search_tool(query: str, runtime: ToolRuntime[RAGContext]):
+    vector_store = runtime.context.lexical_vector_store
+    return similarity_search(query, vector_store)
+
+
+@tool(
+    name_or_callable="similarity_search",
+    description="Retrieves facts related to the user's query. Use this to give an initial answer to the user's query",
+)
+async def asimilarity_search_tool(query: str, runtime: ToolRuntime[RAGContext]):
     vector_store = runtime.context.lexical_vector_store
     return asimilarity_search(query, vector_store)
