@@ -1,7 +1,9 @@
+import shutil
+import zipfile
 from pathlib import Path
 from typing import Annotated
 
-from fastapi import APIRouter, BackgroundTasks, Depends
+from fastapi import APIRouter, BackgroundTasks, Depends, Form
 from langchain_core.language_models.chat_models import BaseChatModel
 from langchain_neo4j.vectorstores.neo4j_vector import Neo4jVector
 
@@ -16,13 +18,17 @@ from ingestion.ingestors.property_graph import PropertyGraphIngestor
 from ingestion.pipeline import Pipeline
 from ingestion.readers.markdown import MarkdownReader
 
+API_ROOT = Path(__file__).resolve().parent.parent
+TEMP_ROOT = API_ROOT / "temp"
+TEMP_ROOT.mkdir(exist_ok=True)
+
 router = APIRouter()
 
 
 @router.post("/ingest")
 async def ingest(
     background_tasks: BackgroundTasks,
-    payload: IngestionRequest,
+    payload: Annotated[IngestionRequest, Form()],
     knowledge_base_service: Annotated[KnowledgeBaseService, Depends(get_kb_service)],
     llm: Annotated[BaseChatModel, Depends(get_llm)],
     lexical_vector_store: Annotated[
@@ -32,9 +38,26 @@ async def ingest(
         Neo4jVector, Depends(provide_vector_store(VectorStoreName.community))
     ],
 ):
+    temp_dir = TEMP_ROOT / payload.knowledge_base.id
+    temp_dir.mkdir(exist_ok=True)
+    extract_dir = temp_dir / "extracted"
+    temp_dir.mkdir(parents=True)
+    extract_dir.mkdir()
+
+    # Save ZIP
+    zip_path = temp_dir / payload.files.filename
+    with zip_path.open("wb") as f:
+        shutil.copyfileobj(payload.files.file, f)
+
+    # Extract ZIP
+    with zipfile.ZipFile(zip_path, "r") as zip_ref:
+        zip_ref.extractall(extract_dir)
+
+    # Collect extracted files (e.g. markdown only)
     file_paths = [
-        Path(__file__).resolve().parent.parent / "data" / file for file in payload.files
+        p for p in extract_dir.rglob("*") if p.is_file() and p.suffix in {".md", ".txt"}
     ]
+
     files = [MarkdownReader(path).load() for path in file_paths]
     lexical_graph_ingestor = LexicalGraphIngestor(
         vector_store=lexical_vector_store,
