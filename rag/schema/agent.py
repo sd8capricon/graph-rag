@@ -10,4 +10,5 @@ from rag.schema.retrievers import DriftConfig
 class RAGContext:
     drift_config: DriftConfig
     llm: BaseChatModel
-    vector_store: Neo4jVector
+    lexical_vector_store: Neo4jVector | None = None
+    commuunity_vector_store: Neo4jVector | None = None

@@ -21,7 +21,10 @@ async def chat(
     payload: ChatRequest,
     agent: Annotated[RAGAgent, Depends(get_rag_agent)],
     llm: Annotated[BaseChatModel, Depends(get_llm)],
-    vector_store: Annotated[
+    lexical_vector_store: Annotated[
+        Neo4jVector, Depends(provide_vector_store(VectorStoreName.lexical))
+    ],
+    community_vector_store: Annotated[
         Neo4jVector, Depends(provide_vector_store(VectorStoreName.community))
     ],
 ):
@@ -30,7 +33,8 @@ async def chat(
         context=RAGContext(
             drift_config={"top_k": 5, "max_depth": 2, "max_follow_ups": 3},
             llm=llm,
-            vector_store=vector_store,
+            lexical_vector_store=lexical_vector_store,
+            commuunity_vector_store=community_vector_store,
         ),
     )
     last_message = result["messages"][-1]

@@ -87,7 +87,7 @@ def check_agent(query: str, llm: ChatOpenAI, vector_store: Neo4jVector):
         context=RAGContext(
             drift_config={"top_k": 5, "max_depth": 2, "max_follow_ups": 3},
             llm=llm,
-            vector_store=vector_store,
+            commuunity_vector_store=vector_store,
         ),
     )
     print(res)
