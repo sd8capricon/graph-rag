@@ -14,3 +14,4 @@ wheels/
 
 # Local test data (used only for development/testing)
 data/
+*.db
