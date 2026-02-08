@@ -6,7 +6,7 @@ meta {
 
 post {
   url: {{local_url}}/knowledge_base/ingest
-  body: json
+  body: multipartForm
   auth: none
 }
 
@@ -21,4 +21,11 @@ body:json {
       "ayrton_senna.md"
     ]
   }
+}
+
+body:multipart-form {
+  id: 12
+  name: F1 driver resume
+  knowledge_extraction_prompt: I have a set of F1 driver resumes. I need to know what information is tracked (like stats and teams), what specific details are inside those categories (like wins or years), and how the drivers, teams, and awards are linked together.
+  files: @file(/Users/sd8capricon/Developer/projects/graphrag/api/data/resumes.zip)
 }

@@ -1,5 +1,4 @@
 import shutil
-import zipfile
 from pathlib import Path
 from typing import Annotated
 
@@ -12,6 +11,8 @@ from api.dependencies.llm import get_llm
 from api.dependencies.vector_store import provide_vector_store
 from api.enums.vector_store import VectorStoreName
 from api.schema.knowledge_base import IngestionRequest
+from api.utils.files import extract_zip
+from common.schema.knowledge_base import KnowledgeBase
 from common.services.knowledge_base import KnowledgeBaseService
 from ingestion.ingestors.lexical_graph import LexicalGraphIngestor
 from ingestion.ingestors.property_graph import PropertyGraphIngestor
@@ -38,20 +39,8 @@ async def ingest(
         Neo4jVector, Depends(provide_vector_store(VectorStoreName.community))
     ],
 ):
-    temp_dir = TEMP_ROOT / payload.knowledge_base.id
-    temp_dir.mkdir(exist_ok=True)
-    extract_dir = temp_dir / "extracted"
-    temp_dir.mkdir(parents=True)
-    extract_dir.mkdir()
-
-    # Save ZIP
-    zip_path = temp_dir / payload.files.filename
-    with zip_path.open("wb") as f:
-        shutil.copyfileobj(payload.files.file, f)
-
-    # Extract ZIP
-    with zipfile.ZipFile(zip_path, "r") as zip_ref:
-        zip_ref.extractall(extract_dir)
+    temp_dir = TEMP_ROOT / payload.id
+    extract_dir = extract_zip(payload.files, temp_dir=temp_dir)
 
     # Collect extracted files (e.g. markdown only)
     file_paths = [
@@ -59,6 +48,9 @@ async def ingest(
     ]
 
     files = [MarkdownReader(path).load() for path in file_paths]
+
+    knowledge_base = KnowledgeBase(**payload.model_dump(exclude={"files"}))
+
     lexical_graph_ingestor = LexicalGraphIngestor(
         vector_store=lexical_vector_store,
     )
@@ -70,9 +62,13 @@ async def ingest(
     )
 
     pipeline = Pipeline(
-        knowledge_base=payload.knowledge_base,
+        knowledge_base=knowledge_base,
         knowledge_base_service=knowledge_base_service,
         ingestors=[lexical_graph_ingestor, property_graph_ingestor],
     )
 
     background_tasks.add_task(pipeline.run, files)
+
+    # clean up
+    shutil.rmtree(temp_dir)
+    return
