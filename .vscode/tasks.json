@@ -19,6 +19,17 @@
             },
             "isBackground": true,
             "problemMatcher": []
+        },
+        {
+            "label": "Build App",
+            "type": "docker-build",
+            "platform": "python",
+            "dockerBuild": {
+                "tag": "graphrag:latest",
+                "dockerfile": "${workspaceFolder}/dockerfile",
+                "context": "${workspaceFolder}",
+                "platform": "linux/amd64"
+            }
         }
     ]
 }
